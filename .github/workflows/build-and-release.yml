@@ -66,6 +66,8 @@ jobs:
                   ./linuxdeploy-x86_64.AppImage \
                     --appdir AppDir \
                     --executable build/release/OTA \
+                    --desktop-file OTA.desktop \
+                    --icon-file OTA.svg \
                     --plugin qt \
                     --output appimage
 

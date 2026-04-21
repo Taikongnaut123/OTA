@@ -1,0 +1,8 @@
+[Desktop Entry]
+Type=Application
+Name=OTA
+Comment=S100 Controller Upgrade Tool
+Exec=OTA
+Icon=OTA
+Categories=Utility;System;
+Terminal=false
