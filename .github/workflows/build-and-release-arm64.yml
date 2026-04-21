@@ -13,33 +13,48 @@ jobs:
         runs-on: ubuntu-latest
         permissions:
             contents: write
-
+        
         steps:
             - name: Checkout code
               uses: actions/checkout@v4
 
-            - name: Install Qt
-              uses: jurplel/install-qt-action@v3
+            - name: Set up QEMU
+              uses: docker/setup-qemu-action@v3
               with:
-                  version: "5.15.2"
-                  host: "linux"
-                  target: "desktop"
-                  arch: "gcc_arm64"
-                  modules: "qtcharts qtwebengine"
+                  platforms: arm64
 
-            - name: Display Qt version
+            - name: Set up Docker Buildx
+              uses: docker/setup-buildx-action@v3
+
+            - name: Build in ARM64 container
               run: |
-                  qmake --version
-                  which qmake
+                  docker run --rm --platform linux/arm64 \
+                    -v ${{ github.workspace }}:/workspace \
+                    -w /workspace \
+                    arm64v8/ubuntu:22.04 \
+                    bash -c "
+                      set -e
+                      apt-get update
+                      DEBIAN_FRONTEND=noninteractive apt-get install -y \
+                        qtbase5-dev \
+                        qtcharts5-dev \
+                        qt5-qmake \
+                        build-essential \
+                        file
+                      
+                      mkdir -p build
+                      cd build
+                      qmake ../OTA.pro CONFIG+=release
+                      make -j\$(nproc)
+                      
+                      echo '✓ Build completed'
+                      file release/OTA
+                      ls -lh release/
+                    "
 
-            - name: Create build directory
-              run: mkdir -p build
-
-            - name: Build application
+            - name: Fix file permissions
               run: |
-                  cd build
-                  qmake ../OTA.pro CONFIG+=release
-                  make -j$(nproc)
+                  sudo chown -R $USER:$USER build/
 
             - name: Verify build output
               run: |
@@ -48,7 +63,6 @@ jobs:
                   if [ -f build/release/OTA ]; then
                     echo "✓ OTA executable built successfully"
                     file build/release/OTA
-                    ldd build/release/OTA || true
                   else
                     echo "✗ OTA executable not found"
                     exit 1
