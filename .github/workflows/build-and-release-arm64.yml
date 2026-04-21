@@ -1,4 +1,4 @@
-name: Build and Release OTA (x86_64)
+name: Build and Release OTA (ARM64)
 
 on:
     push:
@@ -9,7 +9,7 @@ on:
 
 jobs:
     build:
-        name: Build OTA Application - x86_64
+        name: Build OTA Application - ARM64
         runs-on: ubuntu-latest
         permissions:
             contents: write
@@ -24,7 +24,7 @@ jobs:
                   version: "5.15.2"
                   host: "linux"
                   target: "desktop"
-                  arch: "gcc_64"
+                  arch: "gcc_arm64"
                   modules: "qtcharts qtwebengine"
 
             - name: Display Qt version
@@ -54,25 +54,6 @@ jobs:
                     exit 1
                   fi
 
-            - name: Install linuxdeploy
-              run: |
-                  wget https://github.com/linuxdeploy/linuxdeploy/releases/download/continuous/linuxdeploy-x86_64.AppImage
-                  chmod +x linuxdeploy-x86_64.AppImage
-                  wget https://github.com/linuxdeploy/linuxdeploy-plugin-qt/releases/download/continuous/linuxdeploy-plugin-qt-x86_64.AppImage
-                  chmod +x linuxdeploy-plugin-qt-x86_64.AppImage
-
-            - name: Create AppImage
-              run: |
-                  export QML_SOURCES_PATHS=.
-                  export QMAKE=$(which qmake)
-                  ./linuxdeploy-x86_64.AppImage \
-                    --appdir AppDir \
-                    --executable build/release/OTA \
-                    --desktop-file OTA.desktop \
-                    --icon-file OTA.svg \
-                    --plugin qt \
-                    --output appimage
-
             - name: Package release artifacts
               run: |
                   mkdir -p release
@@ -84,31 +65,23 @@ jobs:
                   cp config.yaml release/
                   cp README_CONFIG.md release/
 
-                  # 复制 AppImage
-                  if ls OTA*.AppImage 1> /dev/null 2>&1; then
-                    cp OTA*.AppImage release/
-                  fi
-
                   # 创建版本信息
                   echo "Version: ${GITHUB_REF#refs/tags/}" > release/VERSION
                   echo "Build Date: $(date -u +'%Y-%m-%d %H:%M:%S UTC')" >> release/VERSION
                   echo "Commit: $GITHUB_SHA" >> release/VERSION
-                  echo "Architecture: x86_64" >> release/VERSION
+                  echo "Architecture: arm64" >> release/VERSION
 
                   # 创建压缩包
                   cd release
-                  tar -czf ../OTA-linux-x64.tar.gz *
+                  tar -czf ../OTA-linux-arm64.tar.gz *
                   cd ..
 
                   ls -lh release/
-                  ls -lh OTA-linux-x64.tar.gz
+                  ls -lh OTA-linux-arm64.tar.gz
 
             - name: Generate checksums
               run: |
-                  sha256sum OTA-linux-x64.tar.gz > OTA-linux-x64.tar.gz.sha256
-                  if ls OTA*.AppImage 1> /dev/null 2>&1; then
-                    sha256sum OTA*.AppImage > OTA-x86_64.AppImage.sha256
-                  fi
+                  sha256sum OTA-linux-arm64.tar.gz > OTA-linux-arm64.tar.gz.sha256
 
             - name: Upload to Release
               if: success()
@@ -116,44 +89,33 @@ jobs:
               with:
                   tag_name: latest
                   files: |
-                      OTA-linux-x64.tar.gz
-                      OTA-linux-x64.tar.gz.sha256
-                      OTA*.AppImage
-                      OTA-x86_64.AppImage.sha256
+                      OTA-linux-arm64.tar.gz
+                      OTA-linux-arm64.tar.gz.sha256
                   prerelease: true
                   body: |
-                      🤖 **最新自动构建 - x86_64**
+                      🤖 **最新自动构建 - ARM64**
 
                       📅 **更新时间:** ${{ github.event.head_commit.timestamp }}
                       🔗 **Commit:** ${{ github.sha }}
                       🌿 **分支:** ${{ github.ref_name }}
                       👤 **作者:** ${{ github.event.head_commit.author.name }}
                       🔢 **构建编号:** #${{ github.run_number }}
-                      🏗️ **架构:** x86_64
+                      🏗️ **架构:** ARM64
 
                       ---
 
                       ## 📦 下载方式
 
-                      **推荐方式：AppImage**
                       ```bash
-                      wget https://github.com/${{ github.repository }}/releases/download/latest/OTA-x86_64.AppImage
-                      chmod +x OTA-x86_64.AppImage
-                      ./OTA-x86_64.AppImage
-                      ```
-
-                      **传统方式：tar.gz**
-                      ```bash
-                      wget https://github.com/${{ github.repository }}/releases/download/latest/OTA-linux-x64.tar.gz
-                      tar -xzf OTA-linux-x64.tar.gz
+                      wget https://github.com/${{ github.repository }}/releases/download/latest/OTA-linux-arm64.tar.gz
+                      tar -xzf OTA-linux-arm64.tar.gz
                       cd release && chmod +x OTA && ./OTA
                       ```
 
                       ---
 
                       ## ✨ 包含内容
-                      - ✅ OTA 可执行文件（Linux x86_64）
-                      - ✅ AppImage 独立包（推荐）
+                      - ✅ OTA 可执行文件（Linux ARM64）
                       - ✅ 配置文件 config.yaml
                       - ✅ 配置说明 README_CONFIG.md
                       - ✅ SHA256 校验和文件
@@ -167,8 +129,7 @@ jobs:
                       ## 🔐 文件校验
                       使用 SHA256 校验文件完整性：
                       ```bash
-                      sha256sum -c OTA-linux-x64.tar.gz.sha256
-                      sha256sum -c OTA-x86_64.AppImage.sha256
+                      sha256sum -c OTA-linux-arm64.tar.gz.sha256
                       ```
 
                       ## 📝 更新日志
