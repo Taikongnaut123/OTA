@@ -1,188 +1,162 @@
 name: Build and Release OTA
 
 on:
-  push:
-    tags:
-      - 'v*'  # 当推送以 v 开头的标签时触发（如 v1.0.0）
-  workflow_dispatch:  # 允许手动触发
+    push:
+        tags:
+            - "v*" # 当推送以 v 开头的标签时触发（如 v1.0.0）
+    workflow_dispatch:
+        # 允许手动触发
 
 jobs:
-  build:
-    name: Build OTA Application
-    runs-on: ubuntu-latest
-    
-    steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
-      
-    - name: Install Qt
-      uses: jurplel/install-qt-action@v3
-      with:
-        version: '5.15.2'
-        host: 'linux'
-        target: 'desktop'
-        arch: 'gcc_64'
-        modules: 'qtcharts qtwebengine'
-        cached: 'false'
-        
-    - name: Display Qt version
-      run: |
-        qmake --version
-        which qmake
-        
-    - name: Create build directory
-      run: mkdir -p build
-      
-    - name: Build application
-      run: |
-        cd build
-        qmake ../OTA.pro CONFIG+=release
-        make -j$(nproc)
-        
-    - name: Verify build output
-      run: |
-        ls -lh build/
-        if [ -f build/OTA ]; then
-          echo "✓ OTA executable built successfully"
-          file build/OTA
-          ldd build/OTA || true
-        else
-          echo "✗ OTA executable not found"
-          exit 1
-        fi
-        
-    - name: Install linuxdeploy
-      run: |
-        wget https://github.com/linuxdeploy/linuxdeploy/releases/download/continuous/linuxdeploy-x86_64.AppImage
-        chmod +x linuxdeploy-x86_64.AppImage
-        wget https://github.com/linuxdeploy/linuxdeploy-plugin-qt/releases/download/continuous/linuxdeploy-plugin-qt-x86_64.AppImage
-        chmod +x linuxdeploy-plugin-qt-x86_64.AppImage
-        
-    - name: Create AppImage
-      run: |
-        export QML_SOURCES_PATHS=.
-        export QMAKE=$(which qmake)
-        ./linuxdeploy-x86_64.AppImage \
-          --appdir AppDir \
-          --executable build/OTA \
-          --plugin qt \
-          --output appimage
-        
-    - name: Package release artifacts
-      run: |
-        mkdir -p release
-        
-        # 复制可执行文件
-        cp build/OTA release/
-        
-        # 复制配置文件
-        cp config.yaml release/
-        cp README_CONFIG.md release/
-        
-        # 复制 AppImage (如果存在)
-        if ls OTA*.AppImage 1> /dev/null 2>&1; then
-          cp OTA*.AppImage release/
-        fi
-        
-        # 创建安装说明
-        cat > release/INSTALL.txt << 'EOF'
-OTA 升级工具 - 安装说明
-========================
+    build:
+        name: Build OTA Application
+        runs-on: ubuntu-latest
 
-安装方式一：使用 AppImage（推荐）
-1. 使用 OTA-*.AppImage 文件
-2. 添加执行权限：chmod +x OTA-*.AppImage
-3. 直接运行：./OTA-*.AppImage
+        steps:
+            - name: Checkout code
+              uses: actions/checkout@v4
 
-安装方式二：使用独立可执行文件
-1. 确保系统已安装 Qt5
-   Ubuntu/Debian: sudo apt-get install qt5-default
-   CentOS/RHEL: sudo yum install qt5-qtbase
-2. 添加执行权限：chmod +x OTA
-3. 运行：./OTA
+            - name: Install Qt
+              uses: jurplel/install-qt-action@v3
+              with:
+                  version: "5.15.2"
+                  host: "linux"
+                  target: "desktop"
+                  arch: "gcc_64"
+                  modules: "qtcharts qtwebengine"
 
-配置文件：
-- config.yaml：修改脚本路径和其他配置
-- 详细说明请参考 README_CONFIG.md
+            - name: Display Qt version
+              run: |
+                  qmake --version
+                  which qmake
 
-系统要求：
-- Linux 64位系统
-- Qt 5.12 或更高版本
-EOF
-        
-        # 创建版本信息
-        echo "Version: ${GITHUB_REF#refs/tags/}" > release/VERSION
-        echo "Build Date: $(date -u +'%Y-%m-%d %H:%M:%S UTC')" >> release/VERSION
-        echo "Commit: $GITHUB_SHA" >> release/VERSION
-        
-        # 创建压缩包
-        cd release
-        tar -czf ../OTA-linux-x64.tar.gz *
-        cd ..
-        
-        ls -lh release/
-        ls -lh OTA-linux-x64.tar.gz
-        
-    - name: Generate checksums
-      run: |
-        sha256sum OTA-linux-x64.tar.gz > OTA-linux-x64.tar.gz.sha256
-        if ls release/OTA*.AppImage 1> /dev/null 2>&1; then
-          sha256sum release/OTA*.AppImage > release/OTA.AppImage.sha256
-        fi
-        
-    - name: Upload build artifacts
-      uses: actions/upload-artifact@v4
-      with:
-        name: ota-linux-build
-        path: |
-          OTA-linux-x64.tar.gz
-          OTA-linux-x64.tar.gz.sha256
-          release/OTA*.AppImage
-          release/OTA.AppImage.sha256
-        retention-days: 30
-        
-    - name: Create Release
-      if: startsWith(github.ref, 'refs/tags/')
-      uses: softprops/action-gh-release@v1
-      with:
-        files: |
-          OTA-linux-x64.tar.gz
-          OTA-linux-x64.tar.gz.sha256
-          release/OTA*.AppImage
-          release/OTA.AppImage.sha256
-        body: |
-          ## OTA 升级工具 ${{ github.ref_name }}
-          
-          ### 📦 下载方式
-          
-          **推荐方式：AppImage**
-          - 下载 `OTA-*.AppImage`
-          - 添加执行权限并运行
-          
-          **传统方式：tar.gz**
-          - 下载 `OTA-linux-x64.tar.gz`
-          - 解压后需要系统安装 Qt5
-          
-          ### ✨ 特性
-          - ✅ 支持从 config.yaml 配置脚本路径
-          - ✅ 升级和恢复功能
-          - ✅ 实时显示执行进度
-          - ✅ 友好的用户界面
-          
-          ### 📝 更新说明
-          请查看 [CHANGELOG](https://github.com/${{ github.repository }}/commits/${{ github.ref_name }})
-          
-          ### 🔐 文件校验
-          使用 SHA256 校验文件完整性：
-          ```bash
-          sha256sum -c OTA-linux-x64.tar.gz.sha256
-          ```
-          
-          ---
-          
-          构建时间: ${{ github.event.head_commit.timestamp }}
-          提交: ${{ github.sha }}
-        draft: false
-        prerelease: false
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+            - name: Create build directory
+              run: mkdir -p build
+
+            - name: Build application
+              run: |
+                  cd build
+                  qmake ../OTA.pro CONFIG+=release
+                  make -j$(nproc)
+
+            - name: Verify build output
+              run: |
+                  ls -lh build/
+                  if [ -f build/OTA ]; then
+                    echo "✓ OTA executable built successfully"
+                    file build/OTA
+                    ldd build/OTA || true
+                  else
+                    echo "✗ OTA executable not found"
+                    exit 1
+                  fi
+
+            - name: Install linuxdeploy
+              run: |
+                  wget https://github.com/linuxdeploy/linuxdeploy/releases/download/continuous/linuxdeploy-x86_64.AppImage
+                  chmod +x linuxdeploy-x86_64.AppImage
+                  wget https://github.com/linuxdeploy/linuxdeploy-plugin-qt/releases/download/continuous/linuxdeploy-plugin-qt-x86_64.AppImage
+                  chmod +x linuxdeploy-plugin-qt-x86_64.AppImage
+
+            - name: Create AppImage
+              run: |
+                  export QML_SOURCES_PATHS=.
+                  export QMAKE=$(which qmake)
+                  ./linuxdeploy-x86_64.AppImage \
+                    --appdir AppDir \
+                    --executable build/OTA \
+                    --plugin qt \
+                    --output appimage
+
+            - name: Package release artifacts
+              run: |
+                  mkdir -p release
+
+                  # 复制可执行文件
+                  cp build/OTA release/
+
+                  # 复制配置文件
+                  cp config.yaml release/
+                  cp README_CONFIG.md release/
+
+                  # 复制 AppImage (如果存在)
+                  if ls OTA*.AppImage 1> /dev/null 2>&1; then
+                    cp OTA*.AppImage release/
+                  fi
+
+                  # 创建版本信息
+                  echo "Version: ${GITHUB_REF#refs/tags/}" > release/VERSION
+                  echo "Build Date: $(date -u +'%Y-%m-%d %H:%M:%S UTC')" >> release/VERSION
+                  echo "Commit: $GITHUB_SHA" >> release/VERSION
+
+                  # 创建压缩包
+                  cd release
+                  tar -czf ../OTA-linux-x64.tar.gz *
+                  cd ..
+
+                  ls -lh release/
+                  ls -lh OTA-linux-x64.tar.gz
+
+            - name: Generate checksums
+              run: |
+                  sha256sum OTA-linux-x64.tar.gz > OTA-linux-x64.tar.gz.sha256
+                  if ls release/OTA*.AppImage 1> /dev/null 2>&1; then
+                    sha256sum release/OTA*.AppImage > release/OTA.AppImage.sha256
+                  fi
+
+            - name: Upload build artifacts
+              uses: actions/upload-artifact@v4
+              with:
+                  name: ota-linux-build
+                  path: |
+                      OTA-linux-x64.tar.gz
+                      OTA-linux-x64.tar.gz.sha256
+                      release/OTA*.AppImage
+                      release/OTA.AppImage.sha256
+                  retention-days: 30
+
+            - name: Create Release
+              if: startsWith(github.ref, 'refs/tags/')
+              uses: softprops/action-gh-release@v1
+              with:
+                  files: |
+                      OTA-linux-x64.tar.gz
+                      OTA-linux-x64.tar.gz.sha256
+                      release/OTA*.AppImage
+                      release/OTA.AppImage.sha256
+                  body: |
+                      ## OTA 升级工具 ${{ github.ref_name }}
+
+                      ### 📦 下载方式
+
+                      **推荐方式：AppImage**
+                      - 下载 `OTA-*.AppImage`
+                      - 添加执行权限并运行
+
+                      **传统方式：tar.gz**
+                      - 下载 `OTA-linux-x64.tar.gz`
+                      - 解压后需要系统安装 Qt5
+
+                      ### ✨ 特性
+                      - ✅ 支持从 config.yaml 配置脚本路径
+                      - ✅ 升级和恢复功能
+                      - ✅ 实时显示执行进度
+                      - ✅ 友好的用户界面
+
+                      ### 📝 更新说明
+                      请查看 [CHANGELOG](https://github.com/${{ github.repository }}/commits/${{ github.ref_name }})
+
+                      ### 🔐 文件校验
+                      使用 SHA256 校验文件完整性：
+                      ```bash
+                      sha256sum -c OTA-linux-x64.tar.gz.sha256
+                      ```
+
+                      ---
+
+                      构建时间: ${{ github.event.head_commit.timestamp }}
+                      提交: ${{ github.sha }}
+                  draft: false
+                  prerelease: false
+              env:
+                  GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
