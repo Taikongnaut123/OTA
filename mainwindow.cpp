@@ -17,6 +17,28 @@ MainWindow::MainWindow(QWidget *parent)
         QMessageBox::warning(this, "配置加载警告",
                              "无法加载配置文件 config.yaml，将使用默认配置。");
     }
+
+    // ========== 初始化列表 ==========
+    // 1. 设置单选模式（核心）
+    ui->versionListWidget->setSelectionMode(QAbstractItemView::SingleSelection);
+
+    // 2. 设置点击时选中整行（好看）
+    ui->versionListWidget->setSelectionBehavior(QAbstractItemView::SelectRows);
+
+    // 3. 模拟你获取到的列表数据（可以从数据库/配置/网络来）
+    QStringList deviceList = {
+        "设备1：正常",
+        "设备2：异常",
+        "设备3：离线",
+        "设备4：运行中"
+    };
+
+    // 4. 显示到界面
+    ui->versionListWidget->addItems(deviceList);
+    // 选中项改变时，自动触发槽函数
+    connect(ui->versionListWidget, &QListWidget::itemSelectionChanged,
+            this, &MainWindow::getSelectedItem);
+
 }
 
 MainWindow::~MainWindow()
@@ -28,6 +50,22 @@ MainWindow::~MainWindow()
     }
     delete ui;
 }
+
+void MainWindow::getSelectedItem()
+{
+    // 获取当前选中的项
+    QListWidgetItem *item = ui->versionListWidget->currentItem();
+
+    if(item)
+    {
+        // 拿到值！
+        QString value = item->text();
+
+        // 你可以在这里使用这个 value
+        qDebug() << "当前选中：" << value;
+    }
+}
+
 
 void MainWindow::on_upgrade_button_clicked()
 {

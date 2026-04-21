@@ -17,8 +17,8 @@
    <widget class="QWidget" name="verticalLayoutWidget">
     <property name="geometry">
      <rect>
-      <x>170</x>
-      <y>150</y>
+      <x>340</x>
+      <y>50</y>
       <width>411</width>
       <height>138</height>
      </rect>
@@ -80,8 +80,8 @@
    <widget class="QPushButton" name="upgrade_button">
     <property name="geometry">
      <rect>
-      <x>190</x>
-      <y>350</y>
+      <x>270</x>
+      <y>260</y>
       <width>89</width>
       <height>25</height>
      </rect>
@@ -93,24 +93,34 @@
    <widget class="QLineEdit" name="inputLineEdit">
     <property name="geometry">
      <rect>
-      <x>320</x>
-      <y>70</y>
-      <width>113</width>
-      <height>25</height>
+      <x>160</x>
+      <y>390</y>
+      <width>421</width>
+      <height>141</height>
      </rect>
     </property>
    </widget>
    <widget class="QPushButton" name="recovery_button">
     <property name="geometry">
      <rect>
-      <x>410</x>
-      <y>350</y>
+      <x>420</x>
+      <y>260</y>
       <width>89</width>
       <height>25</height>
      </rect>
     </property>
     <property name="text">
      <string>恢复</string>
+    </property>
+   </widget>
+   <widget class="QListWidget" name="versionListWidget">
+    <property name="geometry">
+     <rect>
+      <x>20</x>
+      <y>40</y>
+      <width>256</width>
+      <height>192</height>
+     </rect>
     </property>
    </widget>
   </widget>

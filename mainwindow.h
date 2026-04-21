@@ -32,7 +32,7 @@ private slots:
     void processOutput();
     void processError();
     void processFinished(int exitCode, QProcess::ExitStatus status);
-
+    void getSelectedItem();
     void on_recovery_button_clicked();
 
 private:
