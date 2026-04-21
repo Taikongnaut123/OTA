@@ -103,20 +103,9 @@ jobs:
             - name: Generate checksums
               run: |
                   sha256sum OTA-linux-x64.tar.gz > OTA-linux-x64.tar.gz.sha256
-                  if ls release/OTA*.AppImage 1> /dev/null 2>&1; then
-                    sha256sum release/OTA*.AppImage > release/OTA.AppImage.sha256
+                  if ls OTA*.AppImage 1> /dev/null 2>&1; then
+                    sha256sum OTA*.AppImage > OTA.AppImage.sha256
                   fi
-
-            - name: Upload build artifacts
-              uses: actions/upload-artifact@v4
-              with:
-                  name: ota-linux-build
-                  path: |
-                      OTA-linux-x64.tar.gz
-                      OTA-linux-x64.tar.gz.sha256
-                      release/OTA*.AppImage
-                      release/OTA.AppImage.sha256
-                  retention-days: 30
 
             - name: Create Release
               if: startsWith(github.ref, 'refs/tags/')
@@ -125,8 +114,8 @@ jobs:
                   files: |
                       OTA-linux-x64.tar.gz
                       OTA-linux-x64.tar.gz.sha256
-                      release/OTA*.AppImage
-                      release/OTA.AppImage.sha256
+                      OTA*.AppImage
+                      OTA.AppImage.sha256
                   body: |
                       ## OTA 升级工具 ${{ github.ref_name }}
 
