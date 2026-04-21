@@ -13,7 +13,7 @@ jobs:
         runs-on: ubuntu-latest
         permissions:
             contents: write
-        
+
         steps:
             - name: Checkout code
               uses: actions/checkout@v4
@@ -38,6 +38,7 @@ jobs:
                       DEBIAN_FRONTEND=noninteractive apt-get install -y \
                         qtbase5-dev \
                         qt5-qmake \
+                        qttools5-dev-tools \
                         build-essential \
                         file
                       
