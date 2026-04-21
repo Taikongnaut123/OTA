@@ -20,11 +20,39 @@
 
 `config.yaml` 文件包含以下配置项：
 
+### 脚本路径配置
+
+`script_path` 支持两种格式：
+
+**1. 简单脚本路径：**
 ```yaml
 upgrade:
-  script_path: "/opt/robot/scripts/upgrade_s100.sh"  # 升级脚本路径
+  script_path: "/opt/robot/scripts/upgrade_s100.sh"
+```
+
+**2. 完整命令（带参数）：**
+```yaml
+upgrade:
+  script_path: "/home/linaro/ota/scripts/ota --from-ip 192.168.20.204 --from-path /home/konka-admin/workspace --from-user konka-admin --from-pass 123456 --to-ip 192.168.127.10 --to-user root --to-pass root --package-name tangpa --package-version 1.0.1 --force"
+```
+
+> ✅ **支持特性：**
+> - 完整的命令字符串（程序 + 参数）
+> - Shell 特性（管道 `|`、重定向 `>`、环境变量等）
+> - 复杂的命令组合（使用 `&&`、`||`、`;` 等）
+
+### 完整配置示例
+
+```yaml
+upgrade:
+  script_path: "/opt/robot/scripts/upgrade_s100.sh"  # 升级脚本/命令
   timeout: 3000                                       # 超时时间（毫秒）
   confirm_before_upgrade: true                        # 升级前确认
+
+recovery:
+  script_path: "/opt/recovery_s100.sh"               # 恢复脚本/命令
+  timeout: 3000
+  confirm_before_recovery: true
 
 version:
   current: "v1.0.0.0"  # 当前版本号
@@ -39,6 +67,22 @@ logging:
   enabled: true
   log_path: "/var/log/ota_upgrade.log"
   log_level: "info"
+```
+
+### 高级用法示例
+
+```yaml
+# 示例1：带参数的命令
+script_path: "/usr/bin/upgrade --target 192.168.1.100 --force"
+
+# 示例2：使用管道
+script_path: "cat /tmp/package.tar.gz | tar -xz && ./install.sh"
+
+# 示例3：带环境变量
+script_path: "export TARGET_IP=192.168.1.100 && /opt/upgrade.sh"
+
+# 示例4：条件执行
+script_path: "ping -c 1 192.168.1.100 && /opt/upgrade.sh || echo 'Host unreachable'"
 ```
 
 ## 使用方法

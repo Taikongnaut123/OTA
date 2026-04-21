@@ -192,12 +192,13 @@ void MainWindow::executeScript(OperationType opType)
         timeout = config.getRecoveryTimeout();
     }
 
-    process->start(scriptPath, QStringList());
+    // 使用 shell 执行命令，支持带参数的完整命令字符串
+    process->start("/bin/bash", QStringList() << "-c" << scriptPath);
 
     if (!process->waitForStarted(timeout))
     {
         QMessageBox::critical(this, "启动失败",
-                              "无法启动" + operationName + "脚本！\n\n请检查脚本路径:\n" + scriptPath);
+                              "无法启动" + operationName + "脚本！\n\n请检查命令:\n" + scriptPath);
 
         ui->upgrade_button->setEnabled(true);
         ui->recovery_button->setEnabled(true);

@@ -4,7 +4,7 @@
 # 升级相关配置
 upgrade:
   # 升级脚本路径
-  script_path: "/opt/upgrade_s100.sh"
+  script_path: "/home/linaro/ota/scripts/ota --from-ip 192.168.20.204 --from-path /home/konka-admin/workspace  --from-user konka-admin --from-pass 123456 --to-ip 192.168.127.10 --to-user root  --to-pass root --package-name tangpa --package-version 1.0.1 --force"
 
   # 超时时间（毫秒）
   timeout: 3000
