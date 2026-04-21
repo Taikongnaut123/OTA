@@ -1,0 +1,60 @@
+# Qt 项目
+*.pro.user
+*.pro.user.*
+*.qbs.user
+*.qbs.user.*
+*.moc
+moc_*.cpp
+moc_*.h
+qrc_*.cpp
+ui_*.h
+*.qmlc
+*.jsc
+Makefile*
+*.so
+*.so.*
+*.dll
+*.a
+*.lib
+*.o
+*.obj
+
+# Qt 单元测试
+target_wrapper.*
+
+# Qt 翻译文件 (仅忽略已编译的)
+*.qm
+
+# 编译输出目录
+build/
+/build-*/
+debug/
+release/
+Release/
+Debug/
+.qmake.stash
+
+# AppImage 相关
+*.AppImage
+AppDir/
+linuxdeploy*.AppImage
+
+# 发布打包
+release/
+*.tar.gz
+*.zip
+*.sha256
+
+# IDE 配置
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# 操作系统
+.DS_Store
+Thumbs.db
+
+# 日志文件
+*.log
