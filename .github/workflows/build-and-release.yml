@@ -42,10 +42,11 @@ jobs:
             - name: Verify build output
               run: |
                   ls -lh build/
-                  if [ -f build/OTA ]; then
+                  ls -lh build/release/ || true
+                  if [ -f build/release/OTA ]; then
                     echo "✓ OTA executable built successfully"
-                    file build/OTA
-                    ldd build/OTA || true
+                    file build/release/OTA
+                    ldd build/release/OTA || true
                   else
                     echo "✗ OTA executable not found"
                     exit 1
@@ -64,7 +65,7 @@ jobs:
                   export QMAKE=$(which qmake)
                   ./linuxdeploy-x86_64.AppImage \
                     --appdir AppDir \
-                    --executable build/OTA \
+                    --executable build/release/OTA \
                     --plugin qt \
                     --output appimage
 
@@ -73,7 +74,7 @@ jobs:
                   mkdir -p release
 
                   # 复制可执行文件
-                  cp build/OTA release/
+                  cp build/release/OTA release/
 
                   # 复制配置文件
                   cp config.yaml release/
