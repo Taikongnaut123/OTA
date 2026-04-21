@@ -1,0 +1,56 @@
+# OTA 升级配置文件
+# 修改此文件无需重新编译程序，重启应用即可生效
+
+# 升级相关配置
+upgrade:
+  # 升级脚本路径
+  script_path: "/opt/upgrade_s100.sh"
+
+  # 超时时间（毫秒）
+  timeout: 3000
+
+  # 升级前是否弹出确认对话框
+  confirm_before_upgrade: true
+
+# 恢复相关配置
+recovery:
+  # 恢复脚本路径
+  script_path: "/opt/recovery_s100.sh"
+  
+  # 超时时间（毫秒）
+  timeout: 3000
+  
+  # 恢复前是否弹出确认对话框
+  confirm_before_recovery: true
+
+# 版本信息
+version:
+  # 当前版本号
+  current: "v1.0.0.0"
+
+  # 最新版本号
+  latest: "v1.0.1"
+  # 版本检查URL（可选）
+  # check_url: "https://api.example.com/version"
+
+  # 界面配置
+ui:
+  # 窗口标题
+  window_title: "S100 控制器升级工具"
+
+  # 升级按钮文本
+  upgrade_button_text: "升级"
+
+  # 升级中按钮文本
+  upgrading_button_text: "升级中..."
+
+# 日志配置
+logging:
+  # 是否启用日志
+  enabled: true
+
+  # 日志文件路径
+  log_path: "/var/log/ota_upgrade.log"
+
+  # 日志级别 (debug, info, warning, error)
+  log_level: "info"
