@@ -37,7 +37,6 @@ jobs:
                       apt-get update
                       DEBIAN_FRONTEND=noninteractive apt-get install -y \
                         qtbase5-dev \
-                        qtcharts5-dev \
                         qt5-qmake \
                         build-essential \
                         file
