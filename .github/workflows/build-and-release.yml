@@ -107,7 +107,7 @@ jobs:
                     sha256sum OTA*.AppImage > OTA.AppImage.sha256
                   fi
 
-            - name: Create Release
+            - name: Upload to Release
               if: startsWith(github.ref, 'refs/tags/')
               uses: softprops/action-gh-release@v1
               with:
@@ -116,39 +116,70 @@ jobs:
                       OTA-linux-x64.tar.gz.sha256
                       OTA*.AppImage
                       OTA.AppImage.sha256
+                  prerelease: false
                   body: |
-                      ## OTA 升级工具 ${{ github.ref_name }}
+                      🤖 **OTA 升级工具 ${{ github.ref_name }}**
 
-                      ### 📦 下载方式
+                      📅 **更新时间:** ${{ github.event.head_commit.timestamp }}
+                      🔗 **Commit:** ${{ github.sha }}
+                      🌿 **分支:** ${{ github.ref_name }}
+                      👤 **作者:** ${{ github.event.head_commit.author.name }}
+                      🔢 **构建编号:** #${{ github.run_number }}
 
-                      **推荐方式：AppImage**
-                      - 下载 `OTA-*.AppImage`
-                      - 添加执行权限并运行
+                      ---
 
-                      **传统方式：tar.gz**
-                      - 下载 `OTA-linux-x64.tar.gz`
-                      - 解压后需要系统安装 Qt5
+                      ## 📦 下载方式
 
-                      ### ✨ 特性
+                      ### 推荐方式：AppImage
+                      ```bash
+                      # 1. 下载 AppImage 文件
+                      wget https://github.com/${{ github.repository }}/releases/download/${{ github.ref_name }}/OTA-x86_64.AppImage
+
+                      # 2. 添加执行权限
+                      chmod +x OTA-x86_64.AppImage
+
+                      # 3. 运行
+                      ./OTA-x86_64.AppImage
+                      ```
+
+                      ### 传统方式：tar.gz
+                      ```bash
+                      # 1. 下载并解压
+                      wget https://github.com/${{ github.repository }}/releases/download/${{ github.ref_name }}/OTA-linux-x64.tar.gz
+                      tar -xzf OTA-linux-x64.tar.gz
+                      cd release
+
+                      # 2. 安装 Qt5（如果未安装）
+                      sudo apt-get install qt5-default  # Ubuntu/Debian
+
+                      # 3. 运行
+                      chmod +x OTA
+                      ./OTA
+                      ```
+
+                      ---
+
+                      ## ✨ 包含内容
+                      - ✅ OTA 可执行文件（Linux x64）
+                      - ✅ AppImage 独立包（推荐）
+                      - ✅ 配置文件 config.yaml
+                      - ✅ 配置说明 README_CONFIG.md
+                      - ✅ SHA256 校验和文件
+
+                      ## 🎯 特性
                       - ✅ 支持从 config.yaml 配置脚本路径
                       - ✅ 升级和恢复功能
                       - ✅ 实时显示执行进度
                       - ✅ 友好的用户界面
 
-                      ### 📝 更新说明
-                      请查看 [CHANGELOG](https://github.com/${{ github.repository }}/commits/${{ github.ref_name }})
-
-                      ### 🔐 文件校验
+                      ## 🔐 文件校验
                       使用 SHA256 校验文件完整性：
                       ```bash
                       sha256sum -c OTA-linux-x64.tar.gz.sha256
+                      sha256sum -c OTA.AppImage.sha256
                       ```
 
-                      ---
-
-                      构建时间: ${{ github.event.head_commit.timestamp }}
-                      提交: ${{ github.sha }}
-                  draft: false
-                  prerelease: false
+                      ## 📝 更新日志
+                      查看完整更新日志：[CHANGELOG](https://github.com/${{ github.repository }}/blob/${{ github.ref_name }}/CHANGELOG.md)
               env:
                   GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
