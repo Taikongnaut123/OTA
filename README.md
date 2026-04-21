@@ -14,36 +14,82 @@ S100 控制器升级和恢复工具，支持从配置文件读取脚本路径，
 
 ### 下载安装
 
-从 [Releases](../../releases) 页面下载最新版本：
+从 [Releases](https://github.com/Taikongnaut123/OTA/releases/tag/latest) 页面下载最新版本。
 
-**方式一：AppImage（推荐）**
+---
+
+### 📥 x86_64 平台
+
+#### 方式一：AppImage（推荐，零依赖）
+
 ```bash
 # 1. 下载 AppImage 文件
-wget https://github.com/YOUR_USERNAME/OTA/releases/latest/download/OTA-x86_64.AppImage
+wget https://github.com/Taikongnaut123/OTA/releases/download/latest/OTA-x86_64.AppImage
 
 # 2. 添加执行权限
 chmod +x OTA-x86_64.AppImage
 
-# 3. 运行
+# 3. 直接运行（无需安装任何依赖）
 ./OTA-x86_64.AppImage
 ```
 
-**方式二：tar.gz 压缩包**
+#### 方式二：tar.gz 压缩包
+
 ```bash
 # 1. 下载并解压
-wget https://github.com/YOUR_USERNAME/OTA/releases/latest/download/OTA-linux-x64.tar.gz
+wget https://github.com/Taikongnaut123/OTA/releases/download/latest/OTA-linux-x64.tar.gz
 tar -xzf OTA-linux-x64.tar.gz
 cd release
 
-# 2. 安装 Qt5（如果未安装）
-sudo apt-get install qt5-default  # Ubuntu/Debian
+# 2. 安装 Qt5 运行时（如果未安装）
+sudo apt-get install -y libqt5core5a libqt5gui5 libqt5widgets5  # Ubuntu/Debian
 # 或
-sudo yum install qt5-qtbase       # CentOS/RHEL
+sudo dnf install -y qt5-qtbase qt5-qtbase-gui                     # Fedora/RHEL
+# 或
+sudo pacman -S qt5-base                                           # Arch Linux
 
 # 3. 运行
 chmod +x OTA
 ./OTA
 ```
+
+---
+
+### 📥 ARM64 平台
+
+```bash
+# 1. 下载并解压
+wget https://github.com/Taikongnaut123/OTA/releases/download/latest/OTA-linux-arm64.tar.gz
+tar -xzf OTA-linux-arm64.tar.gz
+cd release
+
+# 2. 安装 Qt5 运行时（如果未安装）
+sudo apt-get update
+sudo apt-get install -y libqt5core5a libqt5gui5 libqt5widgets5
+
+# 3. 运行
+chmod +x OTA
+./OTA
+```
+
+---
+
+### 🔍 运行环境依赖
+
+| 平台 | 发行版本 | 运行时依赖 |
+|------|---------|-----------|
+| **x86_64** | AppImage | ❌ 无依赖（自包含） |
+| **x86_64** | tar.gz | ✅ Qt5 运行时库 |
+| **ARM64** | tar.gz | ✅ Qt5 运行时库 |
+
+**所需 Qt 模块：**
+- `libqt5core5a` - Qt5 核心库
+- `libqt5gui5` - Qt5 GUI 库
+- `libqt5widgets5` - Qt5 Widgets 库
+
+> 💡 **推荐**：x86_64 用户优先使用 AppImage 版本，开箱即用无需安装依赖。
+
+---
 
 ### 配置
 
@@ -71,71 +117,124 @@ version:
 
 ### 环境要求
 
-- Qt 5.12 或更高版本
-- GCC/Clang 编译器
-- Make
+- Qt 5.12 或更高版本（推荐 5.15）
+- GCC/Clang 编译器（支持 C++11）
+- Make 或 CMake
+- qttools5-dev-tools（如需翻译功能）
 
 ### 本地编译
 
 ```bash
 # 克隆仓库
-git clone https://github.com/YOUR_USERNAME/OTA.git
+git clone https://github.com/Taikongnaut123/OTA.git
 cd OTA
 
 # 编译
 mkdir build
 cd build
-qmake ../OTA.pro
-make
+qmake ../OTA.pro CONFIG+=release
+make -j$(nproc)
 
 # 运行
-./OTA
+./release/OTA
 ```
+
+### 开发依赖安装
+
+**Ubuntu/Debian：**
+```bash
+sudo apt-get install -y \
+    qtbase5-dev \
+    qt5-qmake \
+    qttools5-dev-tools \
+    build-essential
+```
+
+**Fedora/RHEL：**
+```bash
+sudo dnf install -y \
+    qt5-qtbase-devel \
+    qt5-qttools-devel \
+    make gcc-c++
+```
+
+---
 
 ## 📦 CI/CD 发布流程
 
-本项目使用 GitHub Actions 自动化编译和发布流程。
+本项目使用 GitHub Actions 实现多平台自动化编译和发布。
 
-### 自动发布新版本
+### 🔄 自动构建触发
 
-只需创建并推送一个 tag，CI 会自动编译并创建 Release：
+推送到 `main` 分支时自动触发构建：
 
 ```bash
-# 1. 创建 tag（遵循语义化版本）
-git tag v1.0.0
-
-# 2. 推送 tag 到远程仓库
-git push origin v1.0.0
+git add .
+git commit -m "your changes"
+git push origin main
 ```
 
-**CI 会自动执行以下步骤：**
+**两个独立的 CI 流程会并行运行：**
 
-1. ✅ 检出代码
-2. ✅ 安装 Qt 5.15.2
-3. ✅ 编译 Release 版本
-4. ✅ 创建 AppImage（包含所有依赖）
-5. ✅ 打包编译产物（可执行文件 + 配置文件）
-6. ✅ 生成 SHA256 校验和
-7. ✅ 创建 GitHub Release
-8. ✅ 上传所有打包文件到 Release
+| CI 文件 | 平台 | 产物 |
+|---------|------|------|
+| `build-and-release.yml` | x86_64 | AppImage + tar.gz |
+| `build-and-release-arm64.yml` | ARM64 | tar.gz |
 
-### 发布产物
+### 🏗️ 构建流程说明
 
-每个 Release 包含：
+#### x86_64 构建流程：
+1. ✅ 安装 Qt 5.15.2（通过 install-qt-action）
+2. ✅ 编译 Release 版本
+3. ✅ 创建 AppImage（使用 linuxdeploy）
+4. ✅ 打包 tar.gz（可执行文件 + 配置文件）
+5. ✅ 生成 SHA256 校验和
+6. ✅ 上传到 `latest` Release
 
-- `OTA-linux-x64.tar.gz` - 完整打包（可执行文件 + 配置 + 说明）
-- `OTA-linux-x64.tar.gz.sha256` - SHA256 校验和
-- `OTA-x86_64.AppImage` - AppImage 格式（推荐）
-- `OTA.AppImage.sha256` - AppImage 校验和
+#### ARM64 构建流程：
+1. ✅ 设置 QEMU + Docker Buildx
+2. ✅ 在 ARM64 容器中编译（arm64v8/ubuntu:22.04）
+3. ✅ 打包 tar.gz
+4. ✅ 生成 SHA256 校验和
+5. ✅ 上传到 `latest` Release
 
-### 手动触发构建
+### 📦 发布产物
 
-如果需要手动触发构建（不创建 Release）：
+每次构建会生成以下文件并上传到 [`latest` Release](https://github.com/Taikongnaut123/OTA/releases/tag/latest)：
 
-1. 进入 GitHub 仓库的 Actions 页面
-2. 选择 "Build and Release OTA" workflow
+**x86_64 平台：**
+- `OTA-x86_64.AppImage` - AppImage 自包含包（推荐）
+- `OTA-x86_64.AppImage.sha256` - AppImage 校验和
+- `OTA-linux-x64.tar.gz` - tar.gz 打包（可执行文件 + 配置 + 说明）
+- `OTA-linux-x64.tar.gz.sha256` - tar.gz 校验和
+
+**ARM64 平台：**
+- `OTA-linux-arm64.tar.gz` - ARM64 打包
+- `OTA-linux-arm64.tar.gz.sha256` - ARM64 校验和
+
+### 🔐 校验文件完整性
+
+```bash
+# 下载文件和校验和
+wget https://github.com/Taikongnaut123/OTA/releases/download/latest/OTA-linux-x64.tar.gz
+wget https://github.com/Taikongnaut123/OTA/releases/download/latest/OTA-linux-x64.tar.gz.sha256
+
+# 验证文件完整性
+sha256sum -c OTA-linux-x64.tar.gz.sha256
+```
+
+### ⚙️ 手动触发构建
+
+除了自动触发，也可以手动触发构建：
+
+1. 进入 [Actions 页面](https://github.com/Taikongnaut123/OTA/actions)
+2. 选择对应的 workflow：
+   - `Build and Release OTA (x86_64)` - x86_64 平台
+   - `Build and Release OTA (ARM64)` - ARM64 平台
 3. 点击 "Run workflow" 按钮
-4. 选择分支并运行
+4. 选择分支（通常是 `main`）并运行
+
+---
 
 ## 🔧 项目结构
 
@@ -143,39 +242,156 @@ git push origin v1.0.0
 OTA/
 ├── .github/
 │   └── workflows/
-│       └── build-and-release.yml  # CI/CD 配置
-├── main.cpp                       # 主程序入口
-├── mainwindow.h/cpp               # 主窗口
-├── mainwindow.ui                  # UI 设计文件
-├── ConfigManager.h/cpp            # 配置管理器
-├── config.yaml                    # 配置文件
-├── OTA.pro                        # Qt 项目文件
-├── README.md                      # 本文件
-└── README_CONFIG.md               # 配置说明
+│       ├── build-and-release.yml       # x86_64 CI 配置
+│       └── build-and-release-arm64.yml # ARM64 CI 配置
+├── main.cpp                            # 主程序入口
+├── mainwindow.h/cpp                    # 主窗口实现
+├── mainwindow.ui                       # UI 设计文件
+├── ConfigManager.h/cpp                 # 配置管理器（YAML 解析）
+├── config.yaml                         # 运行时配置文件
+├── OTA.pro                             # Qt 项目文件
+├── OTA.desktop                         # Desktop entry（AppImage 用）
+├── OTA.svg                             # 应用图标
+├── README.md                           # 本文件
+└── README_CONFIG.md                    # 配置文件详细说明
+```
 ```
 
-## 📋 版本发布清单
+## 📋 开发工作流
 
-发布新版本时的检查清单：
+### 日常开发
 
-- [ ] 更新 `config.yaml` 中的版本号
-- [ ] 测试所有功能是否正常
-- [ ] 更新 CHANGELOG（如果有）
-- [ ] 创建 tag：`git tag v1.x.x`
-- [ ] 推送 tag：`git push origin v1.x.x`
-- [ ] 等待 CI 完成（约 5-10 分钟）
-- [ ] 检查 Release 页面的产物
-- [ ] 下载并测试发布的安装包
+```bash
+# 1. 创建功能分支
+git checkout -b feature/your-feature
+
+# 2. 开发和测试
+# ... 编写代码 ...
+
+# 3. 提交更改
+git add .
+git commit -m "Add: your feature description"
+
+# 4. 推送到远程
+git push origin feature/your-feature
+
+# 5. 创建 Pull Request 合并到 main
+```
+
+### 发布新版本
+
+```bash
+# 1. 更新版本号（config.yaml）
+vim config.yaml  # 修改 version.current 和 version.latest
+
+# 2. 提交版本变更
+git add config.yaml
+git commit -m "Bump version to v1.x.x"
+
+# 3. 推送到 main 分支（自动触发 CI）
+git push origin main
+
+# 4. 等待 CI 完成（约 10-15 分钟）
+# - x86_64 构建：约 8 分钟
+# - ARM64 构建：约 12 分钟（QEMU 模拟较慢）
+
+# 5. 检查 Release 页面的产物
+# https://github.com/Taikongnaut123/OTA/releases/tag/latest
+```
+
+> 💡 **提示**：推送到 `main` 分支会自动触发两个平台的构建，无需手动创建 tag。
 
 ## 🐛 故障排查
 
+### 运行时错误：libGL error / OpenGL 错误
+
+**错误现象：**
+```
+libGL error: glx: failed to create dri3 screen
+libGL error: failed to load driver: rockchip
+```
+
+**原因：** 缺少图形显示环境或 OpenGL 库
+
+**解决方案：**
+
+#### 方案1：安装 OpenGL 库（推荐）
+
+```bash
+# Ubuntu/Debian - 基础方案（通常足够）
+sudo apt-get install -y libgl1-mesa-glx
+
+# 如果仍有问题，再安装完整的 Qt 平台插件依赖
+sudo apt-get install -y \
+    libgl1-mesa-glx \
+    libxcb-xinerama0 \
+    libxcb-icccm4 \
+    libxcb-image0 \
+    libxcb-keysyms1 \
+    libxcb-render-util0 \
+    libxkbcommon-x11-0
+```
+
+#### 方案2：使用软件渲染
+
+如果是远程 SSH 环境或无显示器服务器：
+
+```bash
+# 安装虚拟显示
+sudo apt-get install -y xvfb
+
+# 使用 Xvfb 运行
+xvfb-run ./OTA
+
+# 或设置环境变量使用软件渲染
+export QT_QPA_PLATFORM=offscreen
+./OTA
+```
+
+#### 方案3：X11 转发（SSH 远程）
+
+如果通过 SSH 连接：
+
+```bash
+# 本地机器启用 X11 转发
+ssh -X user@remote-host
+
+# 或编辑 ~/.ssh/config
+Host remote-host
+    ForwardX11 yes
+    ForwardX11Trusted yes
+
+# 远程机器确保安装 X11 相关包
+sudo apt-get install -y xauth x11-apps
+
+# 测试 X11 转发
+xclock  # 应该弹出时钟窗口
+```
+
+#### 方案4：VNC 远程桌面
+
+```bash
+# 安装 VNC 服务器
+sudo apt-get install -y tigervnc-standalone-server
+
+# 启动 VNC
+vncserver :1
+
+# 从本地连接（使用 VNC 客户端连接到 remote-host:5901）
+```
+
+---
+
 ### CI 构建失败
 
-1. 检查 Actions 日志找出具体错误
+1. 检查 [Actions 日志](https://github.com/Taikongnaut123/OTA/actions)找出具体错误
 2. 常见问题：
-   - Qt 版本不兼容：修改 workflow 中的 Qt 版本
-   - 编译错误：本地先测试编译是否通过
-   - 权限问题：检查 GitHub token 权限
+   - **Qt 版本不兼容**：修改 workflow 中的 Qt 版本
+   - **编译错误**：本地先测试编译是否通过
+   - **权限问题**：检查 GitHub token 权限
+   - **ARM64 构建慢**：QEMU 模拟较慢，正常需要 10-15 分钟
+
+---
 
 ### 本地编译失败
 
@@ -184,13 +400,25 @@ OTA/
 qmake --version
 
 # 检查依赖
-ldd build/OTA
+ldd build/release/OTA
 
 # 清理重新构建
 rm -rf build
 mkdir build && cd build
-qmake ../OTA.pro
-make clean && make
+qmake ../OTA.pro CONFIG+=release
+make clean && make -j$(nproc)
+```
+
+---
+
+### 运行时找不到配置文件
+
+```bash
+# 确保 config.yaml 在可执行文件同目录
+ls -la config.yaml
+
+# 或使用绝对路径
+./OTA --config /path/to/config.yaml
 ```
 
 ## 📄 许可证
