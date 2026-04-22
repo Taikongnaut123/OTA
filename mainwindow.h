@@ -55,5 +55,6 @@ private:
     void log(const QString &message);
 
     QFile logFile;
+    QString latestVersion_; // 存储查询到的最新版本号
 };
 #endif // MAINWINDOW_H

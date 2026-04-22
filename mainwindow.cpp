@@ -14,12 +14,12 @@
 #define QUERY_CURRENT_VERSION_CMD "/home/linaro/ota/scripts/ota  --current-version --to-ip 192.168.127.10    --to-user root --to-pass '${TO_PASS}'"
 
 #define UPGRADE_CMD "/home/linaro/ota/scripts/ota --from-ip 192.168.20.204 --from-path /home/konka-admin/workspace  --from-user konka-admin --from-pass ${FROM_PASS} --to-ip 192.168.127.10 " \
-                    "--to-user root  --to-pass ${TO_PASS} --package-name tangpa --package-version 1.0.1 --force"
+                    "--to-user root  --to-pass ${TO_PASS} --package-name tangpa --package-version ${LATEST_VERSION} --force"
 
 #define RECOVERY_CMD "/home/linaro/ota/scripts/ota --restore  --to-ip 192.168.127.10 --to-user root  --to-pass ${TO_PASS}"
 
 MainWindow::MainWindow(QWidget *parent)
-    : QMainWindow(parent), ui(new Ui::MainWindow), process(nullptr), currentOperation(Upgrade)
+    : QMainWindow(parent), ui(new Ui::MainWindow), process(nullptr), currentOperation(Upgrade), latestVersion_("")
 {
     ui->setupUi(this);
 
@@ -220,7 +220,8 @@ void MainWindow::updateVersionInfo()
         if (process->exitCode() == 0)
         {
             latest_version_value = process->readAllStandardOutput().trimmed();
-            log("✓ 最新版本查询成功: " + latest_version_value);
+            latestVersion_ = latest_version_value; // 保存最新版本号
+            log("✓ 最新版本查询成功: " + latest_version_value + " (已保存用于升级)");
         }
         else
         {
@@ -277,6 +278,20 @@ void MainWindow::executeScript(OperationType opType)
     QString operationName = operations.find(currentOperation).value();
 
     log("========== 开始执行" + operationName + "操作 ==========");
+
+    // 如果是升级操作，检查是否已获取最新版本号
+    if (opType == Upgrade && latestVersion_.isEmpty())
+    {
+        log("✗ 错误：尚未获取到最新版本号，无法执行升级");
+        QMessageBox::critical(this, "升级失败",
+                              "无法获取最新版本号！\n\n请等待版本信息加载完成后再尝试升级。");
+        return;
+    }
+
+    if (opType == Upgrade)
+    {
+        log("将升级到版本: " + latestVersion_);
+    }
 
     QPushButton *currentButton = (opType == Upgrade) ? ui->upgrade_button : ui->recovery_button;
 
@@ -363,6 +378,7 @@ QString MainWindow::replacePasswordPlaceholders(const QString &cmd) const
     QString result = cmd;
     result.replace("${FROM_PASS}", fromPass);
     result.replace("${TO_PASS}", toPass);
+    result.replace("${LATEST_VERSION}", latestVersion_); // 替换最新版本号
 
     return result;
 }
