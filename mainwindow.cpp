@@ -99,6 +99,14 @@ void MainWindow::on_recovery_button_clicked()
 
 void MainWindow::processOutput()
 {
+    // 版本查询操作不处理输出（在 updateVersionInfo 中同步读取）
+    if (currentOperation == QueryVersion ||
+        currentOperation == QueryLatestVersion ||
+        currentOperation == QueryCurrentVersion)
+    {
+        return;
+    }
+
     QString output = process->readAllStandardOutput();
     qDebug() << "输出:" << output;
 
@@ -108,6 +116,14 @@ void MainWindow::processOutput()
 
 void MainWindow::processError()
 {
+    // 版本查询操作不处理错误输出（在 updateVersionInfo 中同步读取）
+    if (currentOperation == QueryVersion ||
+        currentOperation == QueryLatestVersion ||
+        currentOperation == QueryCurrentVersion)
+    {
+        return;
+    }
+
     QString error = process->readAllStandardError();
     qDebug() << "错误:" << error;
 
