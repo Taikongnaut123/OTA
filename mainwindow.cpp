@@ -9,7 +9,7 @@
 // 实际密码从加密配置文件读取
 #define QUERY_LATEST_VERSION_CMD "/home/linaro/ota/scripts/ota --remote-latest --from-ip 192.168.20.204 --from-path /home/konka-admin/workspace --package-name tangpa --from-user konka-admin  --from-pass '${FROM_PASS}'"
 
-#define QUERY_CURRENT_VERSION_CMD "/home/linaro/ota/scripts/ota  --current-version --to-ip 192.168.20.204        --to-user konka-admin        --to-pass '${FROM_PASS}'"
+#define QUERY_CURRENT_VERSION_CMD "/home/linaro/ota/scripts/ota  --current-version --to-ip 192.168.127.10    --to-user root --to-pass '${TO_PASS}'"
 
 #define UPGRADE_CMD "/home/linaro/ota/scripts/ota --from-ip 192.168.20.204 --from-path /home/konka-admin/workspace  --from-user konka-admin --from-pass ${FROM_PASS} --to-ip 192.168.127.10 " \
                     "--to-user root  --to-pass ${TO_PASS} --package-name tangpa --package-version 1.0.1 --force"
