@@ -97,16 +97,6 @@ void MainWindow::on_recovery_button_clicked()
     executeScript(Recovery);
 }
 
-//void MainWindow::check_current_version_lable()
-//{
-//    // 从配置文件获取版本号
-//    //    ConfigManager &config = ConfigManager::instance();
-
-//    //    ui->current_version_label_value->setText(config.getCurrentVersion());
-//    //    ui->latest_version_label_value->setText(config.getLatestVersion());
-//    this->updateVersionInfo();
-//}
-
 void MainWindow::processOutput()
 {
     QString output = process->readAllStandardOutput();
@@ -139,7 +129,7 @@ void MainWindow::processFinished(int exitCode, QProcess::ExitStatus status)
 
     QString operationName = operations.find(currentOperation).value();
 
-    ui->inputLineEdit->setReadOnly(false);
+    ui->inputLineEdit->setReadOnly(true);
 
     if (exitCode == 0 && status == QProcess::NormalExit)
     {
@@ -179,6 +169,30 @@ void MainWindow::updateVersionInfo()
     QString latestCmd = replacePasswordPlaceholders(QUERY_LATEST_VERSION_CMD);
     process->start("/bin/bash", QStringList() << "-c" << latestCmd);
 
+    QString latest_version_value = "获取中...";
+    if (process->waitForFinished(timeout))
+    {
+        if (process->exitCode() == 0)
+        {
+            latest_version_value = process->readAllStandardOutput().trimmed();
+        }
+        else
+        {
+            latest_version_value = "获取失败";
+            qWarning() << "获取远程版本失败:" << process->readAllStandardError();
+        }
+    }
+    else
+    {
+        process->kill();
+        latest_version_value = "超时";
+        qWarning() << "获取远程版本超时";
+    }
+
+    // 获取本机当前运行的版本号
+    QString currentCmd = replacePasswordPlaceholders(QUERY_CURRENT_VERSION_CMD);
+    process->start("/bin/bash", QStringList() << "-c" << currentCmd);
+
     QString current_version_value = "获取中...";
     if (process->waitForFinished(timeout))
     {
@@ -189,42 +203,18 @@ void MainWindow::updateVersionInfo()
         else
         {
             current_version_value = "获取失败";
-            qWarning() << "获取远程版本失败:" << process->readAllStandardError();
-        }
-    }
-    else
-    {
-        process->kill();
-        current_version_value = "超时";
-        qWarning() << "获取远程版本超时";
-    }
-
-    // 获取本机当前运行的版本号
-    QString currentCmd = replacePasswordPlaceholders(QUERY_CURRENT_VERSION_CMD);
-    process->start("/bin/bash", QStringList() << "-c" << currentCmd);
-
-    QString lasted_version_value = "获取中...";
-    if (process->waitForFinished(timeout))
-    {
-        if (process->exitCode() == 0)
-        {
-            lasted_version_value = process->readAllStandardOutput().trimmed();
-        }
-        else
-        {
-            lasted_version_value = "获取失败";
             qWarning() << "获取当前版本失败:" << process->readAllStandardError();
         }
     }
     else
     {
         process->kill();
-        lasted_version_value = "超时";
+        current_version_value = "超时";
         qWarning() << "获取当前版本超时";
     }
 
     ui->current_version_label_value->setText(current_version_value);
-    ui->latest_version_label_value->setText(lasted_version_value);
+    ui->latest_version_label_value->setText(latest_version_value);
 }
 
 void MainWindow::executeScript(OperationType opType)
