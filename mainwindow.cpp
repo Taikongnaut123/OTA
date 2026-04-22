@@ -4,6 +4,8 @@
 #include <QMessageBox>
 #include <QTimer>
 #include <QDebug>
+#include <QDateTime>
+#include <QStandardPaths>
 
 // 命令模板（使用占位符 ${FROM_PASS} 和 ${TO_PASS}）
 // 实际密码从加密配置文件读取
@@ -20,6 +22,19 @@ MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent), ui(new Ui::MainWindow), process(nullptr), currentOperation(Upgrade)
 {
     ui->setupUi(this);
+
+    // 初始化日志文件
+    QString logPath = QStandardPaths::writableLocation(QStandardPaths::HomeLocation) + "/ota_upgrade.log";
+    logFile.setFileName(logPath);
+    if (logFile.open(QIODevice::Append | QIODevice::Text))
+    {
+        log("==================== OTA 应用启动 ====================");
+        log("日志文件路径: " + logPath);
+    }
+    else
+    {
+        qWarning() << "无法打开日志文件:" << logPath;
+    }
 
     // 加载配置文件
     ConfigManager &config = ConfigManager::instance();
@@ -53,6 +68,12 @@ MainWindow::MainWindow(QWidget *parent)
 
 MainWindow::~MainWindow()
 {
+    log("OTA 应用退出");
+    if (logFile.isOpen())
+    {
+        logFile.close();
+    }
+
     if (process)
     {
         process->kill();
@@ -63,6 +84,7 @@ MainWindow::~MainWindow()
 
 void MainWindow::on_upgrade_button_clicked()
 {
+    log("用户点击升级按钮");
     QMessageBox::StandardButton reply = QMessageBox::question(
         this,
         "确认升级",
@@ -74,8 +96,10 @@ void MainWindow::on_upgrade_button_clicked()
         QMessageBox::Yes | QMessageBox::No);
     if (reply != QMessageBox::Yes)
     {
+        log("用户取消升级");
         return;
     }
+    log("开始执行升级");
     executeScript(Upgrade);
 }
 
@@ -145,27 +169,30 @@ void MainWindow::processFinished(int exitCode, QProcess::ExitStatus status)
 
     QString operationName = operations.find(currentOperation).value();
 
-    ui->inputLineEdit->setReadOnly(true);
+    ui->inputLineEdit->setReadOnly(false);
 
     if (exitCode == 0 && status == QProcess::NormalExit)
     {
         // 操作成功
+        log(operationName + "执行成功！退出码: " + QString::number(exitCode));
         ui->inputLineEdit->setText("✓ " + operationName + "成功！");
         statusBar()->showMessage(operationName + "成功", 5000);
 
         QMessageBox::information(this, operationName + "成功",
-                                 QString("S100 已成功%1到最新版本！\n\n新版本将在下次启动时生效。").arg(operationName));
+                                 QString("S100 已成功%1到最新版本！\n\n正在刷新版本信息...").arg(operationName));
 
-        // 刷新版本信息
-        QTimer::singleShot(1000, this, &MainWindow::updateVersionInfo);
+        log("3秒后将自动刷新版本信息");
+        // 刷新版本信息（延迟3秒，等待S100完成版本切换）
+        QTimer::singleShot(3000, this, &MainWindow::updateVersionInfo);
     }
     else
     {
         // 操作失败
+        QString errorOutput = process->readAllStandardError();
+        log(operationName + "执行失败！退出码: " + QString::number(exitCode) + " 错误: " + errorOutput);
+
         ui->inputLineEdit->setText("✗ " + operationName + "失败！");
         statusBar()->showMessage(operationName + "失败", 5000);
-
-        QString errorOutput = process->readAllStandardError();
 
         QMessageBox::critical(this, operationName + "失败",
                               QString("%1失败！\n\n错误码: %2\n\n详细信息:\n%3")
@@ -177,12 +204,14 @@ void MainWindow::processFinished(int exitCode, QProcess::ExitStatus status)
 
 void MainWindow::updateVersionInfo()
 {
+    log("========== 开始查询版本信息 ==========");
     currentOperation = QueryVersion;
     // 设置超时时间（毫秒）
     const int timeout = 5000;
 
     // 获取云端最新的版本号
     QString latestCmd = replacePasswordPlaceholders(QUERY_LATEST_VERSION_CMD);
+    log("查询最新版本命令: " + latestCmd);
     process->start("/bin/bash", QStringList() << "-c" << latestCmd);
 
     QString latest_version_value = "获取中...";
@@ -191,22 +220,25 @@ void MainWindow::updateVersionInfo()
         if (process->exitCode() == 0)
         {
             latest_version_value = process->readAllStandardOutput().trimmed();
+            log("✓ 最新版本查询成功: " + latest_version_value);
         }
         else
         {
             latest_version_value = "获取失败";
-            qWarning() << "获取远程版本失败:" << process->readAllStandardError();
+            QString error = process->readAllStandardError();
+            log("✗ 获取最新版本失败，退出码: " + QString::number(process->exitCode()) + " 错误: " + error);
         }
     }
     else
     {
         process->kill();
         latest_version_value = "超时";
-        qWarning() << "获取远程版本超时";
+        log("✗ 获取最新版本超时（5秒）");
     }
 
     // 获取本机当前运行的版本号
     QString currentCmd = replacePasswordPlaceholders(QUERY_CURRENT_VERSION_CMD);
+    log("查询当前版本命令: " + currentCmd);
     process->start("/bin/bash", QStringList() << "-c" << currentCmd);
 
     QString current_version_value = "获取中...";
@@ -215,22 +247,27 @@ void MainWindow::updateVersionInfo()
         if (process->exitCode() == 0)
         {
             current_version_value = process->readAllStandardOutput().trimmed();
+            log("✓ 当前版本查询成功: " + current_version_value);
         }
         else
         {
             current_version_value = "获取失败";
-            qWarning() << "获取当前版本失败:" << process->readAllStandardError();
+            QString error = process->readAllStandardError();
+            log("✗ 获取当前版本失败，退出码: " + QString::number(process->exitCode()) + " 错误: " + error);
         }
     }
     else
     {
         process->kill();
         current_version_value = "超时";
-        qWarning() << "获取当前版本超时";
+        log("✗ 获取当前版本超时（5秒）");
     }
 
     ui->current_version_label_value->setText(current_version_value);
     ui->latest_version_label_value->setText(latest_version_value);
+
+    log("版本信息已更新 - 当前版本: " + current_version_value + " | 最新版本: " + latest_version_value);
+    log("========== 版本查询完成 ==========\n");
 }
 
 void MainWindow::executeScript(OperationType opType)
@@ -238,6 +275,8 @@ void MainWindow::executeScript(OperationType opType)
     currentOperation = opType;
 
     QString operationName = operations.find(currentOperation).value();
+
+    log("========== 开始执行" + operationName + "操作 ==========");
 
     QPushButton *currentButton = (opType == Upgrade) ? ui->upgrade_button : ui->recovery_button;
 
@@ -256,6 +295,7 @@ void MainWindow::executeScript(OperationType opType)
     // 如果配置文件中的脚本命令为空，就用宏定义的命令
     if (scripts_.find(opType).value().isEmpty())
     {
+        log("配置文件中脚本命令为空，使用宏定义的默认命令");
         if (opType == Upgrade)
         {
             // 升级脚本命令
@@ -269,6 +309,7 @@ void MainWindow::executeScript(OperationType opType)
     }
     else
     { // 如果配置文件中的脚本命令不为空，就用配置文件中的命令
+        log("使用配置文件中的脚本命令");
         scriptPath = scripts_.find(opType).value();
 
         if (opType == Upgrade)
@@ -286,11 +327,16 @@ void MainWindow::executeScript(OperationType opType)
     // 替换密码占位符
     scriptPath = replacePasswordPlaceholders(scriptPath);
 
+    log(operationName + "命令: " + scriptPath);
+    log("启动超时设置: " + QString::number(timeout) + " 毫秒");
+
     // 使用 shell 执行命令，支持带参数的完整命令字符串
     process->start("/bin/bash", QStringList() << "-c" << scriptPath);
 
     if (!process->waitForStarted(timeout))
     {
+        log("✗ " + operationName + "脚本启动失败！超时: " + QString::number(timeout) + "ms");
+
         QMessageBox::critical(this, "启动失败",
                               "无法启动" + operationName + "脚本！\n\n请检查命令:\n" + scriptPath);
 
@@ -299,6 +345,8 @@ void MainWindow::executeScript(OperationType opType)
         ui->inputLineEdit->setReadOnly(false);
         return;
     }
+
+    log("✓ " + operationName + "脚本已启动，等待执行完成...");
     currentButton->setText(operationName);
     statusBar()->showMessage("正在" + operationName + "...", 0);
 }
@@ -317,4 +365,21 @@ QString MainWindow::replacePasswordPlaceholders(const QString &cmd) const
     result.replace("${TO_PASS}", toPass);
 
     return result;
+}
+
+void MainWindow::log(const QString &message)
+{
+    QString timestamp = QDateTime::currentDateTime().toString("yyyy-MM-dd hh:mm:ss");
+    QString logMessage = QString("[%1] %2\n").arg(timestamp).arg(message);
+
+    // 输出到终端
+    qDebug().noquote() << logMessage.trimmed();
+
+    // 写入日志文件
+    if (logFile.isOpen())
+    {
+        QTextStream stream(&logFile);
+        stream << logMessage;
+        stream.flush();
+    }
 }

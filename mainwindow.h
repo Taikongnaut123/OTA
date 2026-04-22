@@ -3,6 +3,8 @@
 
 #include <QMainWindow>
 #include <QProcess>
+#include <QFile>
+#include <QTextStream>
 #include "ConfigManager.h"
 
 QT_BEGIN_NAMESPACE
@@ -31,7 +33,7 @@ public:
 
 private slots:
     void on_upgrade_button_clicked();
-//    void check_current_version_lable();
+    //    void check_current_version_lable();
     void processOutput();
     void processError();
     void processFinished(int exitCode, QProcess::ExitStatus status);
@@ -50,5 +52,8 @@ private:
     //    void showUpgradeDialog();
     void executeScript(OperationType opType);
     QString replacePasswordPlaceholders(const QString &cmd) const;
+    void log(const QString &message);
+
+    QFile logFile;
 };
 #endif // MAINWINDOW_H
