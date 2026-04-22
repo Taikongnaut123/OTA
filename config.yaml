@@ -1,10 +1,19 @@
 # OTA 升级配置文件
 # 修改此文件无需重新编译程序，重启应用即可生效
 
+# 凭证配置（Base64编码存储）
+# 注意：密码使用Base64编码进行混淆，不是真正的加密
+credentials:
+  # from_pass: "123456" 的 Base64 编码
+  from_pass: "MTIzNDU2"
+
+  # to_pass: "root" 的 Base64 编码
+  to_pass: "cm9vdA=="
+
 # 升级相关配置
 upgrade:
   # 升级脚本路径
-  script_path: "/home/linaro/ota/scripts/ota --from-ip 192.168.20.204 --from-path /home/konka-admin/workspace  --from-user konka-admin --from-pass 123456 --to-ip 192.168.127.10 --to-user root  --to-pass root --package-name tangpa --package-version 1.0.1 --force"
+  script_path: ""
 
   # 超时时间（毫秒）
   timeout: 3000
@@ -15,24 +24,29 @@ upgrade:
 # 恢复相关配置
 recovery:
   # 恢复脚本路径
-  script_path: "/opt/recovery_s100.sh"
-  
+  script_path: ""
+
   # 超时时间（毫秒）
   timeout: 3000
-  
+
   # 恢复前是否弹出确认对话框
   confirm_before_recovery: true
 
-# 版本信息
-version:
-  # 当前版本号
-  current: "v1.0.0.0"
-
+# 最新版本信息
+latest_version:
   # 最新版本号
-  latest: "v1.0.1"
-  # 版本检查URL（可选）
-  # check_url: "https://api.example.com/version"
+  script_path: ""
 
+  # 超时时间（毫秒）
+  timeout: 3000
+
+# 当前版本信息
+current_version:
+  # 当前版本号
+  script_path: ""
+
+  # 超时时间（毫秒）
+  timeout: 3000
   # 界面配置
 ui:
   # 窗口标题

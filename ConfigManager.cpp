@@ -3,6 +3,7 @@
 #include <QTextStream>
 #include <QDebug>
 #include <QRegularExpression>
+#include <QByteArray>
 
 ConfigManager &ConfigManager::instance()
 {
@@ -124,32 +125,52 @@ bool ConfigManager::getBool(const QString &key, bool defaultValue) const
     return defaultValue;
 }
 
-QString ConfigManager::getScriptPath() const
+QString ConfigManager::getUpgradeScriptPath() const
 {
-    return getString("upgrade.script_path", "/opt/robot/scripts/upgrade_s100.sh");
+    return getString("upgrade.script_path", "");
 }
 
-QString ConfigManager::getCurrentVersion() const
+QString ConfigManager::getCurrentVersionScriptPath() const
 {
-    return getString("version.current", "v1.0.0.0");
+    return getString("current_version.script_path", "");
 }
 
-QString ConfigManager::getLatestVersion() const
+QString ConfigManager::getLatestVersionScriptPath() const
 {
-    return getString("version.latest", "v1.0.1");
+    return getString("latest_version.script_path", "");
 }
 
-int ConfigManager::getTimeout() const
+int ConfigManager::getUpgradeTimeout() const
 {
     return getInt("upgrade.timeout", 3000);
 }
 
 QString ConfigManager::getRecoveryScriptPath() const
 {
-    return getString("recovery.script_path", "/opt/robot/scripts/recovery_s100.sh");
+    return getString("recovery.script_path", "");
 }
 
 int ConfigManager::getRecoveryTimeout() const
 {
     return getInt("recovery.timeout", 3000);
+}
+
+QString ConfigManager::getPassword(const QString &key) const
+{
+    // 从配置文件读取Base64编码的密码
+    QString encodedPassword = getString(key, "");
+
+    if (encodedPassword.isEmpty())
+    {
+        qWarning() << "密码配置项为空:" << key;
+        return "";
+    }
+
+    // Base64解码
+    QByteArray encodedData = encodedPassword.toLatin1();
+    QByteArray decodedData = QByteArray::fromBase64(encodedData);
+    QString password = QString::fromUtf8(decodedData);
+
+    qDebug() << "成功解码密码:" << key;
+    return password;
 }

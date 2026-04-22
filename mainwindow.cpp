@@ -5,6 +5,17 @@
 #include <QTimer>
 #include <QDebug>
 
+// 命令模板（使用占位符 ${FROM_PASS} 和 ${TO_PASS}）
+// 实际密码从加密配置文件读取
+#define QUERY_LATEST_VERSION_CMD "/home/linaro/ota/scripts/ota --remote-latest --from-ip 192.168.20.204 --from-path /home/konka-admin/workspace --package-name tangpa --from-user konka-admin  --from-pass '${FROM_PASS}'"
+
+#define QUERY_CURRENT_VERSION_CMD "/home/linaro/ota/scripts/ota  --current-version --to-ip 192.168.20.204        --to-user konka-admin        --to-pass '${FROM_PASS}'"
+
+#define UPGRADE_CMD "/home/linaro/ota/scripts/ota --from-ip 192.168.20.204 --from-path /home/konka-admin/workspace  --from-user konka-admin --from-pass ${FROM_PASS} --to-ip 192.168.127.10 " \
+                    "--to-user root  --to-pass ${TO_PASS} --package-name tangpa --package-version 1.0.1 --force"
+
+#define RECOVERY_CMD "/home/linaro/ota/scripts/ota --restore  --to-ip 192.168.127.10 --to-user root  --to-pass ${TO_PASS}"
+
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent), ui(new Ui::MainWindow), process(nullptr), currentOperation(Upgrade)
 {
@@ -17,28 +28,27 @@ MainWindow::MainWindow(QWidget *parent)
         QMessageBox::warning(this, "配置加载警告",
                              "无法加载配置文件 config.yaml，将使用默认配置。");
     }
+    else
+    {
 
-    // ========== 初始化列表 ==========
-    // 1. 设置单选模式（核心）
-    ui->versionListWidget->setSelectionMode(QAbstractItemView::SingleSelection);
+        scripts_.insert(Upgrade, config.getUpgradeScriptPath());
+        scripts_.insert(Recovery, config.getRecoveryScriptPath());
+        scripts_.insert(QueryLatestVersion, config.getLatestVersionScriptPath());
+        scripts_.insert(QueryCurrentVersion, config.getCurrentVersionScriptPath());
+    }
+    process = new QProcess();
 
-    // 2. 设置点击时选中整行（好看）
-    ui->versionListWidget->setSelectionBehavior(QAbstractItemView::SelectRows);
+    // 连接信号
+    connect(process, &QProcess::readyReadStandardOutput,
+            this, &MainWindow::processOutput);
+    connect(process, &QProcess::readyReadStandardError,
+            this, &MainWindow::processError);
+    connect(process, QOverload<int, QProcess::ExitStatus>::of(&QProcess::finished),
+            this, &MainWindow::processFinished);
 
-    // 3. 模拟你获取到的列表数据（可以从数据库/配置/网络来）
-    QStringList deviceList = {
-        "设备1：正常",
-        "设备2：异常",
-        "设备3：离线",
-        "设备4：运行中"
-    };
-
-    // 4. 显示到界面
-    ui->versionListWidget->addItems(deviceList);
-    // 选中项改变时，自动触发槽函数
-    connect(ui->versionListWidget, &QListWidget::itemSelectionChanged,
-            this, &MainWindow::getSelectedItem);
-
+    // 延迟执行版本信息更新，避免阻塞构造函数
+    // 窗口显示后 500ms 开始获取版本信息
+    QTimer::singleShot(500, this, &MainWindow::updateVersionInfo);
 }
 
 MainWindow::~MainWindow()
@@ -50,22 +60,6 @@ MainWindow::~MainWindow()
     }
     delete ui;
 }
-
-void MainWindow::getSelectedItem()
-{
-    // 获取当前选中的项
-    QListWidgetItem *item = ui->versionListWidget->currentItem();
-
-    if(item)
-    {
-        // 拿到值！
-        QString value = item->text();
-
-        // 你可以在这里使用这个 value
-        qDebug() << "当前选中：" << value;
-    }
-}
-
 
 void MainWindow::on_upgrade_button_clicked()
 {
@@ -106,10 +100,11 @@ void MainWindow::on_recovery_button_clicked()
 void MainWindow::check_current_version_lable()
 {
     // 从配置文件获取版本号
-    ConfigManager &config = ConfigManager::instance();
+    //    ConfigManager &config = ConfigManager::instance();
 
-    ui->current_version_label_value->setText(config.getCurrentVersion());
-    ui->latest_version_label_value->setText(config.getLatestVersion());
+    //    ui->current_version_label_value->setText(config.getCurrentVersion());
+    //    ui->latest_version_label_value->setText(config.getLatestVersion());
+    this->updateVersionInfo();
 }
 
 void MainWindow::processOutput()
@@ -134,11 +129,7 @@ void MainWindow::processFinished(int exitCode, QProcess::ExitStatus status)
     ui->upgrade_button->setEnabled(true);
     ui->recovery_button->setEnabled(true);
 
-    QString operationName = (currentOperation == Upgrade) ? "升级" : "恢复";
-    QString buttonText = (currentOperation == Upgrade) ? "升级" : "恢复";
-
-    QPushButton *currentButton = (currentOperation == Upgrade) ? ui->upgrade_button : ui->recovery_button;
-    currentButton->setText(buttonText);
+    QString operationName = operations.find(currentOperation).value();
 
     ui->inputLineEdit->setReadOnly(false);
 
@@ -152,7 +143,7 @@ void MainWindow::processFinished(int exitCode, QProcess::ExitStatus status)
                                  QString("S100 已成功%1到最新版本！\n\n新版本将在下次启动时生效。").arg(operationName));
 
         // 刷新版本信息
-        QTimer::singleShot(1000, this, &MainWindow::check_current_version_lable);
+        QTimer::singleShot(1000, this, &MainWindow::updateVersionInfo);
     }
     else
     {
@@ -168,31 +159,71 @@ void MainWindow::processFinished(int exitCode, QProcess::ExitStatus status)
                                   .arg(exitCode)
                                   .arg(errorOutput.isEmpty() ? "无详细错误信息" : errorOutput));
     }
-
-    process->deleteLater();
-    process = nullptr;
 }
 
 void MainWindow::updateVersionInfo()
 {
-    // 从配置文件获取版本号
-    ConfigManager &config = ConfigManager::instance();
+    currentOperation = QueryVersion;
+    // 设置超时时间（毫秒）
+    const int timeout = 5000;
 
-    ui->current_version_label_value->setText(config.getCurrentVersion());
-    ui->latest_version_label_value->setText(config.getLatestVersion());
-}
+    // 获取云端最新的版本号
+    QString latestCmd = replacePasswordPlaceholders(QUERY_LATEST_VERSION_CMD);
+    process->start("/bin/bash", QStringList() << "-c" << latestCmd);
 
-void MainWindow::showUpgradeDialog()
-{
-    executeScript(Upgrade);
+    QString current_version_value = "获取中...";
+    if (process->waitForFinished(timeout))
+    {
+        if (process->exitCode() == 0)
+        {
+            current_version_value = process->readAllStandardOutput().trimmed();
+        }
+        else
+        {
+            current_version_value = "获取失败";
+            qWarning() << "获取远程版本失败:" << process->readAllStandardError();
+        }
+    }
+    else
+    {
+        process->kill();
+        current_version_value = "超时";
+        qWarning() << "获取远程版本超时";
+    }
+
+    // 获取本机当前运行的版本号
+    QString currentCmd = replacePasswordPlaceholders(QUERY_CURRENT_VERSION_CMD);
+    process->start("/bin/bash", QStringList() << "-c" << currentCmd);
+
+    QString lasted_version_value = "获取中...";
+    if (process->waitForFinished(timeout))
+    {
+        if (process->exitCode() == 0)
+        {
+            lasted_version_value = process->readAllStandardOutput().trimmed();
+        }
+        else
+        {
+            lasted_version_value = "获取失败";
+            qWarning() << "获取当前版本失败:" << process->readAllStandardError();
+        }
+    }
+    else
+    {
+        process->kill();
+        lasted_version_value = "超时";
+        qWarning() << "获取当前版本超时";
+    }
+
+    ui->current_version_label_value->setText(current_version_value);
+    ui->latest_version_label_value->setText(lasted_version_value);
 }
 
 void MainWindow::executeScript(OperationType opType)
 {
     currentOperation = opType;
 
-    QString operationName = (opType == Upgrade) ? "升级" : "恢复";
-    QString buttonText = (opType == Upgrade) ? "升级" : "恢复";
+    QString operationName = operations.find(currentOperation).value();
 
     QPushButton *currentButton = (opType == Upgrade) ? ui->upgrade_button : ui->recovery_button;
 
@@ -204,31 +235,42 @@ void MainWindow::executeScript(OperationType opType)
     ui->inputLineEdit->clear();
     ui->inputLineEdit->setText("正在执行" + operationName + "脚本...");
 
-    process = new QProcess();
-
-    // 连接信号
-    connect(process, &QProcess::readyReadStandardOutput,
-            this, &MainWindow::processOutput);
-    connect(process, &QProcess::readyReadStandardError,
-            this, &MainWindow::processError);
-    connect(process, QOverload<int, QProcess::ExitStatus>::of(&QProcess::finished),
-            this, &MainWindow::processFinished);
-
     // 从配置文件读取脚本路径
     ConfigManager &config = ConfigManager::instance();
     QString scriptPath;
-    int timeout;
-
-    if (opType == Upgrade)
+    int timeout = 3000;
+    // 如果配置文件中的脚本命令为空，就用宏定义的命令
+    if (scripts_.find(opType).value().isEmpty())
     {
-        scriptPath = config.getScriptPath();
-        timeout = config.getTimeout();
+        if (opType == Upgrade)
+        {
+            // 升级脚本命令
+            scriptPath = UPGRADE_CMD;
+        }
+        else
+        {
+            // 恢复脚本命令
+            scriptPath = RECOVERY_CMD;
+        }
     }
     else
-    {
-        scriptPath = config.getRecoveryScriptPath();
-        timeout = config.getRecoveryTimeout();
+    { // 如果配置文件中的脚本命令不为空，就用配置文件中的命令
+        scriptPath = scripts_.find(opType).value();
+
+        if (opType == Upgrade)
+        {
+            // 升级脚本执行超时时间
+            timeout = config.getUpgradeTimeout();
+        }
+        else
+        {
+            // 恢复脚本执行超时时间
+            timeout = config.getRecoveryTimeout();
+        }
     }
+
+    // 替换密码占位符
+    scriptPath = replacePasswordPlaceholders(scriptPath);
 
     // 使用 shell 执行命令，支持带参数的完整命令字符串
     process->start("/bin/bash", QStringList() << "-c" << scriptPath);
@@ -240,10 +282,25 @@ void MainWindow::executeScript(OperationType opType)
 
         ui->upgrade_button->setEnabled(true);
         ui->recovery_button->setEnabled(true);
-        currentButton->setText(buttonText);
         ui->inputLineEdit->setReadOnly(false);
         return;
     }
-
+    currentButton->setText(operationName);
     statusBar()->showMessage("正在" + operationName + "...", 0);
+}
+
+QString MainWindow::replacePasswordPlaceholders(const QString &cmd) const
+{
+    ConfigManager &config = ConfigManager::instance();
+
+    // 从配置文件读取解密后的密码
+    QString fromPass = config.getPassword("credentials.from_pass");
+    QString toPass = config.getPassword("credentials.to_pass");
+
+    // 替换占位符
+    QString result = cmd;
+    result.replace("${FROM_PASS}", fromPass);
+    result.replace("${TO_PASS}", toPass);
+
+    return result;
 }

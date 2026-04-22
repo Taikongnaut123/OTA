@@ -19,12 +19,15 @@ public:
     bool getBool(const QString &key, bool defaultValue = false) const;
 
     // 获取脚本路径（便捷方法）
-    QString getScriptPath() const;
+    QString getUpgradeScriptPath() const;
     QString getRecoveryScriptPath() const;
-    QString getCurrentVersion() const;
-    QString getLatestVersion() const;
-    int getTimeout() const;
+    QString getCurrentVersionScriptPath() const;
+    QString getLatestVersionScriptPath() const;
+    int getUpgradeTimeout() const;
     int getRecoveryTimeout() const;
+
+    // 获取解密后的密码
+    QString getPassword(const QString &key) const;
 
 private:
     ConfigManager() = default;

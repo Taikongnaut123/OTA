@@ -17,8 +17,8 @@
    <widget class="QWidget" name="verticalLayoutWidget">
     <property name="geometry">
      <rect>
-      <x>340</x>
-      <y>50</y>
+      <x>190</x>
+      <y>90</y>
       <width>411</width>
       <height>138</height>
      </rect>
@@ -111,32 +111,6 @@
     </property>
     <property name="text">
      <string>恢复</string>
-    </property>
-   </widget>
-   <widget class="QListWidget" name="versionListWidget">
-    <property name="geometry">
-     <rect>
-      <x>30</x>
-      <y>40</y>
-      <width>256</width>
-      <height>192</height>
-     </rect>
-    </property>
-   </widget>
-   <widget class="QLabel" name="label">
-    <property name="enabled">
-     <bool>false</bool>
-    </property>
-    <property name="geometry">
-     <rect>
-      <x>30</x>
-      <y>20</y>
-      <width>67</width>
-      <height>17</height>
-     </rect>
-    </property>
-    <property name="text">
-     <string>可选版本</string>
     </property>
    </widget>
   </widget>

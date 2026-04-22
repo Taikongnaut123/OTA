@@ -19,8 +19,11 @@ class MainWindow : public QMainWindow
 public:
     enum OperationType
     {
-        Upgrade,
-        Recovery
+        Upgrade = 0,
+        Recovery = 1,
+        QueryLatestVersion = 2,
+        QueryCurrentVersion = 3,
+        QueryVersion = 5
     };
 
     MainWindow(QWidget *parent = nullptr);
@@ -32,16 +35,20 @@ private slots:
     void processOutput();
     void processError();
     void processFinished(int exitCode, QProcess::ExitStatus status);
-    void getSelectedItem();
     void on_recovery_button_clicked();
 
 private:
     Ui::MainWindow *ui;
     QProcess *process;
     OperationType currentOperation;
-
+    QMap<OperationType, QString> operations{
+        {Upgrade, "升级"},
+        {Recovery, "恢复"},
+        {QueryVersion, "获取版本号"}};
+    QMap<OperationType, QString> scripts_;
     void updateVersionInfo();
-    void showUpgradeDialog();
+    //    void showUpgradeDialog();
     void executeScript(OperationType opType);
+    QString replacePasswordPlaceholders(const QString &cmd) const;
 };
 #endif // MAINWINDOW_H
