@@ -97,15 +97,15 @@ void MainWindow::on_recovery_button_clicked()
     executeScript(Recovery);
 }
 
-void MainWindow::check_current_version_lable()
-{
-    // 从配置文件获取版本号
-    //    ConfigManager &config = ConfigManager::instance();
+//void MainWindow::check_current_version_lable()
+//{
+//    // 从配置文件获取版本号
+//    //    ConfigManager &config = ConfigManager::instance();
 
-    //    ui->current_version_label_value->setText(config.getCurrentVersion());
-    //    ui->latest_version_label_value->setText(config.getLatestVersion());
-    this->updateVersionInfo();
-}
+//    //    ui->current_version_label_value->setText(config.getCurrentVersion());
+//    //    ui->latest_version_label_value->setText(config.getLatestVersion());
+//    this->updateVersionInfo();
+//}
 
 void MainWindow::processOutput()
 {
@@ -126,6 +126,14 @@ void MainWindow::processError()
 
 void MainWindow::processFinished(int exitCode, QProcess::ExitStatus status)
 {
+    // 版本查询操作不需要显示消息框，直接返回
+    if (currentOperation == QueryVersion ||
+        currentOperation == QueryLatestVersion ||
+        currentOperation == QueryCurrentVersion)
+    {
+        return;
+    }
+
     ui->upgrade_button->setEnabled(true);
     ui->recovery_button->setEnabled(true);
 
