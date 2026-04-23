@@ -6,6 +6,9 @@ S100 控制器升级和恢复工具，支持从配置文件读取脚本路径，
 
 - ✅ 支持升级和恢复功能
 - ✅ 配置文件化：从 `config.yaml` 读取所有配置
+- ✅ 安全凭据存储：密码使用 Base64 编码存储
+- ✅ 自动版本查询：动态获取最新版本和当前版本
+- ✅ 详细日志记录：所有操作记录到 `~/ota_upgrade.log`
 - ✅ 实时显示执行进度
 - ✅ 友好的用户界面
 - ✅ 自动化 CI/CD 流程
@@ -63,14 +66,24 @@ wget https://github.com/Taikongnaut123/OTA/releases/download/latest/OTA-linux-ar
 tar -xzf OTA-linux-arm64.tar.gz
 cd release
 
-# 2. 安装 Qt5 运行时（如果未安装）
+# 2. 安装运行时依赖（如果未安装）
 sudo apt-get update
-sudo apt-get install -y libqt5core5a libqt5gui5 libqt5widgets5
+sudo apt-get install -y \
+    libqt5core5a \
+    libqt5gui5 \
+    libqt5widgets5 \
+    libglib2.0-0 \
+    libdbus-1-3
 
 # 3. 运行
 chmod +x OTA
 ./OTA
 ```
+
+> ⚠️ **ARM64 注意事项**：
+> - 需要系统已安装 Qt5 运行时库和基础依赖
+> - 确保系统架构为 `aarch64`（可用 `uname -m` 检查）
+> - 如遇到依赖问题，可用 `ldd ./OTA` 检查缺失的库
 
 ---
 
@@ -96,18 +109,45 @@ chmod +x OTA
 编辑 `config.yaml` 文件来配置脚本路径和其他选项：
 
 ```yaml
+# 凭证配置（Base64 编码存储）
+credentials:
+  from_pass: "MTIzNDU2"  # "123456" 的 Base64 编码
+  to_pass: "cm9vdA=="    # "root" 的 Base64 编码
+
+# 升级配置
 upgrade:
-  script_path: "/opt/upgrade_s100.sh"
+  script_path: ""  # 留空使用默认命令，或填写自定义脚本路径
   timeout: 3000
+  confirm_before_upgrade: true
 
+# 恢复配置
 recovery:
-  script_path: "/opt/recovery_s100.sh"
+  script_path: ""
+  timeout: 3000
+  confirm_before_recovery: true
+
+# 最新版本查询
+latest_version:
+  script_path: ""
   timeout: 3000
 
-version:
-  current: "v1.0.0.0"
-  latest: "v1.0.1"
+# 当前版本查询
+current_version:
+  script_path: ""
+  timeout: 3000
+
+# 日志配置
+logging:
+  enabled: true
+  log_path: "/var/log/ota_upgrade.log"
+  log_level: "info"
 ```
+
+**重要特性：**
+- 🔒 **安全凭据**：密码使用 Base64 编码存储在配置文件中（避免明文密码）
+- 🔄 **动态版本**：程序自动查询最新版本号，升级时无需手动指定
+- 📝 **日志记录**：所有操作自动记录到 `~/ota_upgrade.log`，方便排查问题
+- 🛠️ **命令支持**：`script_path` 支持完整命令字符串（带参数、管道等）
 
 修改配置后只需重启应用，无需重新编译。
 
@@ -303,85 +343,6 @@ git push origin main
 
 ## 🐛 故障排查
 
-### 运行时错误：libGL error / OpenGL 错误
-
-**错误现象：**
-```
-libGL error: glx: failed to create dri3 screen
-libGL error: failed to load driver: rockchip
-```
-
-**原因：** 缺少图形显示环境或 OpenGL 库
-
-**解决方案：**
-
-#### 方案1：安装 OpenGL 库（推荐）
-
-```bash
-# Ubuntu/Debian - 基础方案（通常足够）
-sudo apt-get install -y libgl1-mesa-glx
-
-# 如果仍有问题，再安装完整的 Qt 平台插件依赖
-sudo apt-get install -y \
-    libgl1-mesa-glx \
-    libxcb-xinerama0 \
-    libxcb-icccm4 \
-    libxcb-image0 \
-    libxcb-keysyms1 \
-    libxcb-render-util0 \
-    libxkbcommon-x11-0
-```
-
-#### 方案2：使用软件渲染
-
-如果是远程 SSH 环境或无显示器服务器：
-
-```bash
-# 安装虚拟显示
-sudo apt-get install -y xvfb
-
-# 使用 Xvfb 运行
-xvfb-run ./OTA
-
-# 或设置环境变量使用软件渲染
-export QT_QPA_PLATFORM=offscreen
-./OTA
-```
-
-#### 方案3：X11 转发（SSH 远程）
-
-如果通过 SSH 连接：
-
-```bash
-# 本地机器启用 X11 转发
-ssh -X user@remote-host
-
-# 或编辑 ~/.ssh/config
-Host remote-host
-    ForwardX11 yes
-    ForwardX11Trusted yes
-
-# 远程机器确保安装 X11 相关包
-sudo apt-get install -y xauth x11-apps
-
-# 测试 X11 转发
-xclock  # 应该弹出时钟窗口
-```
-
-#### 方案4：VNC 远程桌面
-
-```bash
-# 安装 VNC 服务器
-sudo apt-get install -y tigervnc-standalone-server
-
-# 启动 VNC
-vncserver :1
-
-# 从本地连接（使用 VNC 客户端连接到 remote-host:5901）
-```
-
----
-
 ### CI 构建失败
 
 1. 检查 [Actions 日志](https://github.com/Taikongnaut123/OTA/actions)找出具体错误
@@ -411,14 +372,24 @@ make clean && make -j$(nproc)
 
 ---
 
-### 运行时找不到配置文件
+### 运行时错误
 
+**问题：找不到配置文件**
 ```bash
 # 确保 config.yaml 在可执行文件同目录
 ls -la config.yaml
 
 # 或使用绝对路径
 ./OTA --config /path/to/config.yaml
+```
+
+**问题：查看日志文件**
+```bash
+# 应用日志文件位置
+tail -f ~/ota_upgrade.log
+
+# 查看最近的操作记录
+tail -n 50 ~/ota_upgrade.log
 ```
 
 ## 📄 许可证
