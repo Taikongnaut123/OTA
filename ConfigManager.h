@@ -26,8 +26,19 @@ public:
     int getUpgradeTimeout() const;
     int getRecoveryTimeout() const;
 
-    // 获取解密后的密码
+    // 获取密码（明文）
     QString getPassword(const QString &key) const;
+
+    // 获取服务器配置
+    QString getFromIp() const;
+    QString getFromPath() const;
+    QString getFromUser() const;
+    QString getToIp() const;
+    QString getToUser() const;
+    QString getPackageName() const;
+
+    // 获取脚本路径配置
+    QString getOtaScriptPath() const;
 
 private:
     ConfigManager() = default;

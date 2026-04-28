@@ -7,21 +7,30 @@
 #include <QDateTime>
 #include <QStandardPaths>
 
-// 命令模板（使用占位符 ${FROM_PASS} 和 ${TO_PASS}）
-// 实际密码从加密配置文件读取
-#define QUERY_LATEST_VERSION_CMD "/home/linaro/ota/scripts/ota --remote-latest --from-ip 192.168.20.204 --from-path /home/konka-admin/workspace --package-name tangpa --from-user konka-admin  --from-pass '${FROM_PASS}'"
+// 命令模板（使用占位符）
+// 占位符说明：
+// ${OTA_SCRIPT} - OTA 脚本路径
+// ${FROM_IP}, ${FROM_PATH}, ${FROM_USER}, ${FROM_PASS} - 源服务器配置
+// ${TO_IP}, ${TO_USER}, ${TO_PASS} - 目标设备配置
+// ${PACKAGE_NAME} - 包名称
+// ${LATEST_VERSION} - 最新版本号（自动查询）
+// 所有参数从 config.yaml 读取
+#define QUERY_LATEST_VERSION_CMD "${OTA_SCRIPT} --remote-latest --from-ip ${FROM_IP} --from-path ${FROM_PATH} --package-name ${PACKAGE_NAME} --from-user ${FROM_USER} --from-pass '${FROM_PASS}'"
 
-#define QUERY_CURRENT_VERSION_CMD "/home/linaro/ota/scripts/ota  --current-version --to-ip 192.168.127.10    --to-user root --to-pass '${TO_PASS}'"
+#define QUERY_CURRENT_VERSION_CMD "${OTA_SCRIPT} --current-version --to-ip ${TO_IP} --to-user ${TO_USER} --to-pass '${TO_PASS}'"
 
-#define UPGRADE_CMD "/home/linaro/ota/scripts/ota --from-ip 192.168.20.204 --from-path /home/konka-admin/workspace  --from-user konka-admin --from-pass ${FROM_PASS} --to-ip 192.168.127.10 " \
-                    "--to-user root  --to-pass ${TO_PASS} --package-name tangpa --package-version ${LATEST_VERSION} --force"
+#define UPGRADE_CMD "${OTA_SCRIPT} --from-ip ${FROM_IP} --from-path ${FROM_PATH} --from-user ${FROM_USER} --from-pass ${FROM_PASS} --to-ip ${TO_IP} " \
+                    "--to-user ${TO_USER} --to-pass ${TO_PASS} --package-name ${PACKAGE_NAME} --package-version ${LATEST_VERSION} --force"
 
-#define RECOVERY_CMD "/home/linaro/ota/scripts/ota --restore  --to-ip 192.168.127.10 --to-user root  --to-pass ${TO_PASS}"
+#define RECOVERY_CMD "${OTA_SCRIPT} --restore --to-ip ${TO_IP} --to-user ${TO_USER} --to-pass ${TO_PASS}"
 
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent), ui(new Ui::MainWindow), process(nullptr), currentOperation(Upgrade), latestVersion_("")
 {
     ui->setupUi(this);
+
+    // 初始化日志文本框为只读
+    ui->log_text_edit->setReadOnly(true);
 
     // 初始化日志文件
     QString logPath = QStandardPaths::writableLocation(QStandardPaths::HomeLocation) + "/ota_upgrade.log";
@@ -134,8 +143,8 @@ void MainWindow::processOutput()
     QString output = process->readAllStandardOutput();
     qDebug() << "输出:" << output;
 
-    // 在输入框显示最新输出
-    ui->inputLineEdit->setText(output.trimmed());
+    // 在文本框追加输出（自动换行）
+    ui->log_text_edit->appendPlainText(output.trimmed());
 }
 
 void MainWindow::processError()
@@ -151,7 +160,7 @@ void MainWindow::processError()
     QString error = process->readAllStandardError();
     qDebug() << "错误:" << error;
 
-    ui->inputLineEdit->setText("错误: " + error.trimmed());
+    ui->log_text_edit->appendPlainText("✗ 错误: " + error.trimmed());
 }
 
 void MainWindow::processFinished(int exitCode, QProcess::ExitStatus status)
@@ -169,13 +178,13 @@ void MainWindow::processFinished(int exitCode, QProcess::ExitStatus status)
 
     QString operationName = operations.find(currentOperation).value();
 
-    ui->inputLineEdit->setReadOnly(false);
+    // 日志文本框保持只读状态
 
     if (exitCode == 0 && status == QProcess::NormalExit)
     {
         // 操作成功
         log(operationName + "执行成功！退出码: " + QString::number(exitCode));
-        ui->inputLineEdit->setText("✓ " + operationName + "成功！");
+        ui->log_text_edit->appendPlainText("✓ " + operationName + "成功！");
         statusBar()->showMessage(operationName + "成功", 5000);
 
         QMessageBox::information(this, operationName + "成功",
@@ -191,7 +200,7 @@ void MainWindow::processFinished(int exitCode, QProcess::ExitStatus status)
         QString errorOutput = process->readAllStandardError();
         log(operationName + "执行失败！退出码: " + QString::number(exitCode) + " 错误: " + errorOutput);
 
-        ui->inputLineEdit->setText("✗ " + operationName + "失败！");
+        ui->log_text_edit->appendPlainText("✗ " + operationName + "失败！");
         statusBar()->showMessage(operationName + "失败", 5000);
 
         QMessageBox::critical(this, operationName + "失败",
@@ -299,9 +308,9 @@ void MainWindow::executeScript(OperationType opType)
     ui->recovery_button->setEnabled(false);
     currentButton->setText(operationName + "中...");
 
-    ui->inputLineEdit->setReadOnly(true);
-    ui->inputLineEdit->clear();
-    ui->inputLineEdit->setText("正在执行" + operationName + "脚本...");
+    ui->log_text_edit->setReadOnly(true);
+    ui->log_text_edit->clear();
+    ui->log_text_edit->appendPlainText("正在执行" + operationName + "脚本...");
 
     // 从配置文件读取脚本路径
     ConfigManager &config = ConfigManager::instance();
@@ -357,7 +366,7 @@ void MainWindow::executeScript(OperationType opType)
 
         ui->upgrade_button->setEnabled(true);
         ui->recovery_button->setEnabled(true);
-        ui->inputLineEdit->setReadOnly(false);
+        // 日志文本框保持只读状态
         return;
     }
 
@@ -370,14 +379,32 @@ QString MainWindow::replacePasswordPlaceholders(const QString &cmd) const
 {
     ConfigManager &config = ConfigManager::instance();
 
-    // 从配置文件读取解密后的密码
-    QString fromPass = config.getPassword("credentials.from_pass");
-    QString toPass = config.getPassword("credentials.to_pass");
+    // 从配置文件读取脚本路径
+    QString otaScriptPath = config.getOtaScriptPath();
 
-    // 替换占位符
+    // 从配置文件读取服务器配置
+    QString fromIp = config.getFromIp();
+    QString fromPath = config.getFromPath();
+    QString fromUser = config.getFromUser();
+    QString toIp = config.getToIp();
+    QString toUser = config.getToUser();
+    QString packageName = config.getPackageName();
+
+    // 从配置文件读取密码（明文）
+    QString fromPass = config.getPassword("server.from_pass");
+    QString toPass = config.getPassword("client.to_pass");
+
+    // 替换所有占位符
     QString result = cmd;
+    result.replace("${OTA_SCRIPT}", otaScriptPath);
+    result.replace("${FROM_IP}", fromIp);
+    result.replace("${FROM_PATH}", fromPath);
+    result.replace("${FROM_USER}", fromUser);
     result.replace("${FROM_PASS}", fromPass);
+    result.replace("${TO_IP}", toIp);
+    result.replace("${TO_USER}", toUser);
     result.replace("${TO_PASS}", toPass);
+    result.replace("${PACKAGE_NAME}", packageName);
     result.replace("${LATEST_VERSION}", latestVersion_); // 替换最新版本号
 
     return result;

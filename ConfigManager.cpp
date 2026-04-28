@@ -127,50 +127,84 @@ bool ConfigManager::getBool(const QString &key, bool defaultValue) const
 
 QString ConfigManager::getUpgradeScriptPath() const
 {
-    return getString("upgrade.script_path", "");
+    // 不再支持自定义升级命令，始终返回空字符串使用默认命令模板
+    return "";
 }
 
 QString ConfigManager::getCurrentVersionScriptPath() const
 {
-    return getString("current_version.script_path", "");
+    // 不再支持自定义版本查询命令，始终返回空字符串使用默认命令模板
+    return "";
 }
 
 QString ConfigManager::getLatestVersionScriptPath() const
 {
-    return getString("latest_version.script_path", "");
+    // 不再支持自定义版本查询命令，始终返回空字符串使用默认命令模板
+    return "";
 }
 
 int ConfigManager::getUpgradeTimeout() const
 {
-    return getInt("upgrade.timeout", 3000);
+    return getInt("advanced.upgrade_timeout", 3000);
 }
 
 QString ConfigManager::getRecoveryScriptPath() const
 {
-    return getString("recovery.script_path", "");
+    // 不再支持自定义恢复命令，始终返回空字符串使用默认命令模板
+    return "";
 }
 
 int ConfigManager::getRecoveryTimeout() const
 {
-    return getInt("recovery.timeout", 3000);
+    return getInt("advanced.recovery_timeout", 3000);
 }
 
 QString ConfigManager::getPassword(const QString &key) const
 {
-    // 从配置文件读取Base64编码的密码
-    QString encodedPassword = getString(key, "");
+    // 从配置文件读取明文密码
+    QString password = getString(key, "");
 
-    if (encodedPassword.isEmpty())
+    if (password.isEmpty())
     {
         qWarning() << "密码配置项为空:" << key;
         return "";
     }
 
-    // Base64解码
-    QByteArray encodedData = encodedPassword.toLatin1();
-    QByteArray decodedData = QByteArray::fromBase64(encodedData);
-    QString password = QString::fromUtf8(decodedData);
-
-    qDebug() << "成功解码密码:" << key;
+    qDebug() << "成功读取密码配置:" << key;
     return password;
+}
+
+QString ConfigManager::getFromIp() const
+{
+    return getString("server.from_ip", "192.168.20.204");
+}
+
+QString ConfigManager::getFromPath() const
+{
+    return getString("server.from_path", "/home/konka-admin/workspace");
+}
+
+QString ConfigManager::getFromUser() const
+{
+    return getString("server.from_user", "konka-admin");
+}
+
+QString ConfigManager::getToIp() const
+{
+    return getString("client.to_ip", "192.168.127.10");
+}
+
+QString ConfigManager::getToUser() const
+{
+    return getString("client.to_user", "root");
+}
+
+QString ConfigManager::getPackageName() const
+{
+    return getString("server.package_name", "tangpa");
+}
+
+QString ConfigManager::getOtaScriptPath() const
+{
+    return getString("script.ota_script_path", "/home/linaro/ota/scripts/ota");
 }

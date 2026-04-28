@@ -90,16 +90,6 @@
      <string>升级</string>
     </property>
    </widget>
-   <widget class="QLineEdit" name="inputLineEdit">
-    <property name="geometry">
-     <rect>
-      <x>170</x>
-      <y>360</y>
-      <width>421</width>
-      <height>141</height>
-     </rect>
-    </property>
-   </widget>
    <widget class="QPushButton" name="recovery_button">
     <property name="geometry">
      <rect>
@@ -111,6 +101,16 @@
     </property>
     <property name="text">
      <string>恢复</string>
+    </property>
+   </widget>
+   <widget class="QPlainTextEdit" name="log_text_edit">
+    <property name="geometry">
+     <rect>
+      <x>190</x>
+      <y>359</y>
+      <width>411</width>
+      <height>131</height>
+     </rect>
     </property>
    </widget>
   </widget>

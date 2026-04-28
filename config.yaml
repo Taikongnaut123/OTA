@@ -1,70 +1,33 @@
 # OTA 升级配置文件
 # 修改此文件无需重新编译程序，重启应用即可生效
 
-# 凭证配置（Base64编码存储）
-# 注意：密码使用Base64编码进行混淆，不是真正的加密
-credentials:
-  # from_pass: "123456" 的 Base64 编码
-  from_pass: "MTIzNDU2"
+# OTA 脚本路径配置
+script:
+  # OTA 脚本的完整路径
+  ota_script_path: "/home/linaro/ota/scripts/ota"
 
-  # to_pass: "root" 的 Base64 编码
-  to_pass: "cm9vdA=="
+# 服务器配置
+server:
+  # 源服务器（存放升级包的服务器）
+  from_ip: "192.168.20.204"
+  from_path: "/home/konka-admin/workspace"
+  from_user: "konka-admin"
+  from_pass: "123456" # 源服务器密码
 
-# 升级相关配置
-upgrade:
-  # 升级脚本路径
-  script_path: ""
+  # 包配置
+  package_name: "tangpa"
 
-  # 超时时间（毫秒）
-  timeout: 3000
+# 客户端配置
+client:
+  # 目标设备（要升级的设备）
+  to_ip: "192.168.127.10"
+  to_user: "root"
+  to_pass: "root" # 目标设备密码
 
-  # 升级前是否弹出确认对话框
-  confirm_before_upgrade: true
+# 高级配置（可选）
+advanced:
+  # 升级操作超时时间（毫秒）
+  upgrade_timeout: 3000
 
-# 恢复相关配置
-recovery:
-  # 恢复脚本路径
-  script_path: ""
-
-  # 超时时间（毫秒）
-  timeout: 3000
-
-  # 恢复前是否弹出确认对话框
-  confirm_before_recovery: true
-
-# 最新版本信息
-latest_version:
-  # 最新版本号
-  script_path: ""
-
-  # 超时时间（毫秒）
-  timeout: 3000
-
-# 当前版本信息
-current_version:
-  # 当前版本号
-  script_path: ""
-
-  # 超时时间（毫秒）
-  timeout: 3000
-  # 界面配置
-ui:
-  # 窗口标题
-  window_title: "S100 控制器升级工具"
-
-  # 升级按钮文本
-  upgrade_button_text: "升级"
-
-  # 升级中按钮文本
-  upgrading_button_text: "升级中..."
-
-# 日志配置
-logging:
-  # 是否启用日志
-  enabled: true
-
-  # 日志文件路径
-  log_path: "/var/log/ota_upgrade.log"
-
-  # 日志级别 (debug, info, warning, error)
-  log_level: "info"
+  # 恢复操作超时时间（毫秒）
+  recovery_timeout: 3000
