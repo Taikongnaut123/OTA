@@ -53,6 +53,7 @@ private:
     void executeScript(OperationType opType);
     QString replacePasswordPlaceholders(const QString &cmd) const;
     void log(const QString &message);
+    bool checkRobotStatus(int &stateId, QString &stateDesc);
 
     QFile logFile;
     QString latestVersion_; // 存储查询到的最新版本号

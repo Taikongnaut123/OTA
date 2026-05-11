@@ -6,10 +6,10 @@ S100 控制器升级和恢复工具，支持从配置文件读取脚本路径，
 
 - ✅ 支持升级和恢复功能
 - ✅ 配置文件化：从 `config.yaml` 读取所有配置
-- ✅ 安全凭据存储：密码使用 Base64 编码存储
+- ✅ 参数化部署：IP、路径、用户名、密码等全部可配置
 - ✅ 自动版本查询：动态获取最新版本和当前版本
 - ✅ 详细日志记录：所有操作记录到 `~/ota_upgrade.log`
-- ✅ 实时显示执行进度
+- ✅ 实时日志显示：多行日志输出，实时查看执行进度
 - ✅ 友好的用户界面
 - ✅ 自动化 CI/CD 流程
 
@@ -109,45 +109,37 @@ chmod +x OTA
 编辑 `config.yaml` 文件来配置脚本路径和其他选项：
 
 ```yaml
-# 凭证配置（Base64 编码存储）
-credentials:
-  from_pass: "MTIzNDU2"  # "123456" 的 Base64 编码
-  to_pass: "cm9vdA=="    # "root" 的 Base64 编码
+# OTA 脚本路径配置
+script:
+  ota_script_path: "/home/linaro/ota/scripts/ota"
 
-# 升级配置
-upgrade:
-  script_path: ""  # 留空使用默认命令，或填写自定义脚本路径
-  timeout: 3000
-  confirm_before_upgrade: true
+# 服务器配置（源服务器 - 存放升级包）
+server:
+  from_ip: "192.168.20.204"
+  from_path: "/home/konka-admin/workspace"
+  from_user: "konka-admin"
+  from_pass: "123456"        # 源服务器密码
+  package_name: "tangpa"
 
-# 恢复配置
-recovery:
-  script_path: ""
-  timeout: 3000
-  confirm_before_recovery: true
+# 客户端配置（目标设备 - 要升级的设备）
+client:
+  to_ip: "192.168.127.10"
+  to_user: "root"
+  to_pass: "root"            # 目标设备密码
 
-# 最新版本查询
-latest_version:
-  script_path: ""
-  timeout: 3000
-
-# 当前版本查询
-current_version:
-  script_path: ""
-  timeout: 3000
-
-# 日志配置
-logging:
-  enabled: true
-  log_path: "/var/log/ota_upgrade.log"
-  log_level: "info"
+# 高级配置（可选）
+advanced:
+  upgrade_timeout: 3000      # 升级操作超时（毫秒）
+  recovery_timeout: 3000     # 恢复操作超时（毫秒）
 ```
 
 **重要特性：**
-- 🔒 **安全凭据**：密码使用 Base64 编码存储在配置文件中（避免明文密码）
+- 🎯 **参数化配置**：所有 IP、路径、用户名、密码都可在配置文件中修改
 - 🔄 **动态版本**：程序自动查询最新版本号，升级时无需手动指定
 - 📝 **日志记录**：所有操作自动记录到 `~/ota_upgrade.log`，方便排查问题
-- 🛠️ **命令支持**：`script_path` 支持完整命令字符串（带参数、管道等）
+- 🛠️ **灵活部署**：修改配置文件后重启即生效，无需重新编译
+
+> ⚠️ **安全提示**：密码以明文形式存储在配置文件中，请确保文件权限设置正确（如 `chmod 600 config.yaml`）
 
 修改配置后只需重启应用，无需重新编译。
 
@@ -392,14 +384,3 @@ tail -f ~/ota_upgrade.log
 tail -n 50 ~/ota_upgrade.log
 ```
 
-## 📄 许可证
-
-本项目遵循 MIT 许可证。
-
-## 🤝 贡献
-
-欢迎提交 Issue 和 Pull Request！
-
----
-
-**注意**：首次设置时，请在 `config.yaml` 中配置正确的脚本路径。

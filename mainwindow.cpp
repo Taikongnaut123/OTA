@@ -6,6 +6,8 @@
 #include <QDebug>
 #include <QDateTime>
 #include <QStandardPaths>
+#include <QJsonDocument>
+#include <QJsonObject>
 
 // 命令模板（使用占位符）
 // 占位符说明：
@@ -94,6 +96,78 @@ MainWindow::~MainWindow()
 void MainWindow::on_upgrade_button_clicked()
 {
     log("用户点击升级按钮");
+
+    // 检查机器人状态
+    int stateId = -1;
+    QString stateDesc;
+    log("正在检查机器人状态...");
+
+    if (!checkRobotStatus(stateId, stateDesc))
+    {
+        QMessageBox::warning(this, "状态检查失败",
+                             "无法获取机器人状态信息。\n\n"
+                             "请确保：\n"
+                             "1. ROS2 环境已正确配置\n"
+                             "2. 机器人节点正在运行\n"
+                             "3. /robot_status_report 话题正在发布");
+        log(QString("机器人状态检查失败"));
+        return;
+    }
+
+    log(QString("机器人状态: state_id=%1, state_desc=%2").arg(stateId).arg(stateDesc));
+
+    // 检查state_id是否为0
+    if (stateId != 0)
+    {
+        QMessageBox::warning(this, "机器人状态不允许升级",
+                             QString("当前机器人状态不允许执行升级操作！\n\n"
+                                     "当前状态: %1 (%2)\n\n"
+                                     "只有在机器人空闲状态(state_id=0)时才能升级。")
+                                 .arg(stateId)
+                                 .arg(stateDesc));
+        log(QString("机器人状态不允许升级: state_id=%1").arg(stateId));
+        return;
+    }
+
+    log("机器人状态检查通过，可以执行升级");
+
+    // 获取当前版本号和最新版本号
+    QString currentVersion = ui->current_version_label_value->text();
+    QString latestVersion = ui->latest_version_label_value->text();
+
+    // 检查版本号是否有效
+    if (currentVersion == "获取中..." || currentVersion == "获取失败" || currentVersion == "超时" ||
+        latestVersion == "获取中..." || latestVersion == "获取失败" || latestVersion == "超时")
+    {
+        QMessageBox::warning(this, "版本信息不完整",
+                             "无法获取完整的版本信息，请稍后重试。");
+        log("版本信息不完整，取消升级");
+        return;
+    }
+
+    // 如果当前版本和最新版本一致，弹出确认对话框
+    if (currentVersion == latestVersion)
+    {
+        log("检测到当前版本与最新版本一致: " + currentVersion);
+        QMessageBox::StandardButton reply = QMessageBox::question(
+            this,
+            "已是最新版本",
+            QString("当前版本 %1 已是最新版本！\n\n"
+                    "是否仍要执行升级操作？\n\n"
+                    "⚠ 这将重新安装当前版本\n"
+                    "⏱ 预计耗时: 3-5 分钟")
+                .arg(currentVersion),
+            QMessageBox::Yes | QMessageBox::No);
+
+        if (reply != QMessageBox::Yes)
+        {
+            log("用户取消重新安装");
+            return;
+        }
+        log("用户确认重新安装当前版本");
+    }
+
+    // 正常升级流程的确认对话框
     QMessageBox::StandardButton reply = QMessageBox::question(
         this,
         "确认升级",
@@ -114,6 +188,42 @@ void MainWindow::on_upgrade_button_clicked()
 
 void MainWindow::on_recovery_button_clicked()
 {
+    log("用户点击恢复按钮");
+
+    // 检查机器人状态
+    int stateId = -1;
+    QString stateDesc;
+    log("正在检查机器人状态...");
+
+    if (!checkRobotStatus(stateId, stateDesc))
+    {
+        QMessageBox::warning(this, "状态检查失败",
+                             "无法获取机器人状态信息。\n\n"
+                             "请确保：\n"
+                             "1. ROS2 环境已正确配置\n"
+                             "2. 机器人节点正在运行\n"
+                             "3. /robot_status_report 话题正在发布");
+        log(QString("机器人状态检查失败"));
+        return;
+    }
+
+    log(QString("机器人状态: state_id=%1, state_desc=%2").arg(stateId).arg(stateDesc));
+
+    // 检查state_id是否为0
+    if (stateId != 0)
+    {
+        QMessageBox::warning(this, "机器人状态不允许恢复",
+                             QString("当前机器人状态不允许执行恢复操作！\n\n"
+                                     "当前状态: %1 (%2)\n\n"
+                                     "只有在机器人空闲状态(state_id=0)时才能恢复。")
+                                 .arg(stateId)
+                                 .arg(stateDesc));
+        log(QString("机器人状态不允许恢复: state_id=%1").arg(stateId));
+        return;
+    }
+
+    log("机器人状态检查通过，可以执行恢复");
+
     QMessageBox::StandardButton reply = QMessageBox::question(
         this,
         "确认恢复",
@@ -125,8 +235,10 @@ void MainWindow::on_recovery_button_clicked()
         QMessageBox::Yes | QMessageBox::No);
     if (reply != QMessageBox::Yes)
     {
+        log("用户取消恢复");
         return;
     }
+    log("开始执行恢复");
     executeScript(Recovery);
 }
 
@@ -425,4 +537,77 @@ void MainWindow::log(const QString &message)
         stream << logMessage;
         stream.flush();
     }
+}
+
+bool MainWindow::checkRobotStatus(int &stateId, QString &stateDesc)
+{
+    // 创建临时进程用于查询机器人状态
+    QProcess checkProcess;
+    checkProcess.setProcessChannelMode(QProcess::MergedChannels);
+
+    // 使用 --field data 参数直接获取 data 字段的值，避免手动解析YAML
+    QString command = "ros2 topic echo /robot_status_report std_msgs/msg/String --once --field data";
+    log("执行状态查询命令: " + command);
+
+    checkProcess.start("/bin/bash", QStringList() << "-c" << command);
+
+    // 等待10秒超时
+    if (!checkProcess.waitForFinished(10000))
+    {
+        log("✗ 机器人状态查询超时");
+        checkProcess.kill();
+        return false;
+    }
+
+    // 检查退出码
+    if (checkProcess.exitCode() != 0)
+    {
+        QString error = checkProcess.readAll();
+        log("✗ 机器人状态查询失败: " + error);
+        return false;
+    }
+
+    // 读取输出 - 使用 --field data 后直接输出JSON字符串
+    QString jsonString = checkProcess.readAll().trimmed();
+
+    // 去掉可能的单引号包裹（ROS2可能会添加）
+    if (jsonString.startsWith("'") && jsonString.endsWith("'"))
+    {
+        jsonString = jsonString.mid(1, jsonString.length() - 2);
+    }
+
+    log("获取的JSON数据: " + jsonString);
+
+    // 解析JSON
+    QJsonParseError jsonError;
+    QJsonDocument jsonDoc = QJsonDocument::fromJson(jsonString.toUtf8(), &jsonError);
+
+    if (jsonError.error != QJsonParseError::NoError)
+    {
+        log("✗ JSON解析失败: " + jsonError.errorString());
+        return false;
+    }
+
+    if (!jsonDoc.isObject())
+    {
+        log("✗ JSON格式错误：不是有效的对象");
+        return false;
+    }
+
+    QJsonObject jsonObj = jsonDoc.object();
+
+    // 检查必需的字段
+    if (!jsonObj.contains("state_id"))
+    {
+        log("✗ JSON中缺少 'state_id' 字段");
+        return false;
+    }
+
+    // 提取字段值
+    stateId = jsonObj["state_id"].toInt(-1);
+    stateDesc = jsonObj.contains("state_desc") ? jsonObj["state_desc"].toString() : "unknown";
+
+    log(QString("✓ 成功获取机器人状态: state_id=%1, state_desc=%2").arg(stateId).arg(stateDesc));
+
+    return true;
 }
