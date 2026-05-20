@@ -31,3 +31,9 @@ advanced:
 
   # 恢复操作超时时间（毫秒）
   recovery_timeout: 3000
+
+# ROS2 配置
+ros2:
+  # ROS2 环境setup脚本路径
+  # 根据实际安装的ROS2版本修改（humble/foxy/galactic等）
+  ros2_setup: "/opt/ros/humble/setup.bash"

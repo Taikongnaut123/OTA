@@ -545,8 +545,13 @@ bool MainWindow::checkRobotStatus(int &stateId, QString &stateDesc)
     QProcess checkProcess;
     checkProcess.setProcessChannelMode(QProcess::MergedChannels);
 
-    // 使用 --field data 参数直接获取 data 字段的值，避免手动解析YAML
-    QString command = "ros2 topic echo /robot_status_report std_msgs/msg/String --once --field data";
+    // 从配置文件读取ROS2环境脚本路径（如果配置了）
+    ConfigManager &config = ConfigManager::instance();
+    QString ros2Setup = config.getString("ros2.ros2_setup", "/opt/ros/humble/setup.bash");
+
+    // 构建命令：先source ROS2环境，然后执行ros2 topic echo命令
+    QString command = QString("source %1 && ros2 topic echo /robot_status_report std_msgs/msg/String --once --field data")
+                          .arg(ros2Setup);
     log("执行状态查询命令: " + command);
 
     checkProcess.start("/bin/bash", QStringList() << "-c" << command);
