@@ -581,6 +581,13 @@ bool MainWindow::checkRobotStatus(int &stateId, QString &stateDesc)
         jsonString = jsonString.mid(1, jsonString.length() - 2);
     }
 
+    // ros2 topic echo 会在消息后添加 "---" 分隔符，需要移除
+    int separatorIndex = jsonString.indexOf("---");
+    if (separatorIndex != -1)
+    {
+        jsonString = jsonString.left(separatorIndex).trimmed();
+    }
+
     log("获取的JSON数据: " + jsonString);
 
     // 解析JSON
