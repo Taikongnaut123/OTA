@@ -17,14 +17,14 @@
 // ${PACKAGE_NAME} - 包名称
 // ${LATEST_VERSION} - 最新版本号（自动查询）
 // 所有参数从 config.yaml 读取
-#define QUERY_LATEST_VERSION_CMD "${OTA_SCRIPT} --remote-latest --from-ip ${FROM_IP} --from-path ${FROM_PATH} --package-name ${PACKAGE_NAME} --from-user ${FROM_USER} --from-pass '${FROM_PASS}'"
+#define QUERY_LATEST_VERSION_CMD "${OTA_SCRIPT} --remote-latest --from-ip ${FROM_IP} --from-path ${FROM_PATH} --package-name ${PACKAGE_NAME} --from-user ${FROM_USER} --from-pass '${FROM_PASS}' --force"
 
-#define QUERY_CURRENT_VERSION_CMD "${OTA_SCRIPT} --current-version --to-ip ${TO_IP} --to-user ${TO_USER} --to-pass '${TO_PASS}'"
+#define QUERY_CURRENT_VERSION_CMD "${OTA_SCRIPT} --current-version --to-ip ${TO_IP} --to-user ${TO_USER} --to-pass '${TO_PASS}' --force"
 
 #define UPGRADE_CMD "${OTA_SCRIPT} --from-ip ${FROM_IP} --from-path ${FROM_PATH} --from-user ${FROM_USER} --from-pass ${FROM_PASS} --to-ip ${TO_IP} " \
                     "--to-user ${TO_USER} --to-pass ${TO_PASS} --package-name ${PACKAGE_NAME} --package-version ${LATEST_VERSION} --force"
 
-#define RECOVERY_CMD "${OTA_SCRIPT} --restore --to-ip ${TO_IP} --to-user ${TO_USER} --to-pass ${TO_PASS}"
+#define RECOVERY_CMD "${OTA_SCRIPT} --restore --to-ip ${TO_IP} --to-user ${TO_USER} --to-pass ${TO_PASS} --force"
 
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent), ui(new Ui::MainWindow), process(nullptr), currentOperation(Upgrade), latestVersion_("")
