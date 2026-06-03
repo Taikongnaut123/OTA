@@ -75,6 +75,10 @@ MainWindow::MainWindow(QWidget *parent)
     // 延迟执行版本信息更新，避免阻塞构造函数
     // 窗口显示后 500ms 开始获取版本信息
     QTimer::singleShot(500, this, &MainWindow::updateVersionInfo);
+
+    // 初始化 OTA 状态上报为 0（空闲）
+    QTimer::singleShot(1000, this, [this]()
+                       { publishOtaStatus(0); });
 }
 
 MainWindow::~MainWindow()
@@ -285,6 +289,9 @@ void MainWindow::processFinished(int exitCode, QProcess::ExitStatus status)
         return;
     }
 
+    // 上报 OTA 状态：操作结束
+    publishOtaStatus(0);
+
     ui->upgrade_button->setEnabled(true);
     ui->recovery_button->setEnabled(true);
 
@@ -466,6 +473,9 @@ void MainWindow::executeScript(OperationType opType)
     log(operationName + "命令: " + scriptPath);
     log("启动超时设置: " + QString::number(timeout) + " 毫秒");
 
+    // 上报 OTA 状态：操作进行中
+    publishOtaStatus(1);
+
     // 使用 shell 执行命令，支持带参数的完整命令字符串
     process->start("/bin/bash", QStringList() << "-c" << scriptPath);
 
@@ -622,4 +632,20 @@ bool MainWindow::checkRobotStatus(int &stateId, QString &stateDesc)
     log(QString("✓ 成功获取机器人状态: state_id=%1, state_desc=%2").arg(stateId).arg(stateDesc));
 
     return true;
+}
+
+void MainWindow::publishOtaStatus(int status)
+{
+    ConfigManager &config = ConfigManager::instance();
+    QString ros2Setup = config.getString("ros2.ros2_setup", "/opt/ros/humble/setup.bash");
+
+    QString command = QString("source %1 && ros2 topic pub --once /ota_upgrade_status std_msgs/msg/Int32 \"data: %2\"")
+                          .arg(ros2Setup)
+                          .arg(status);
+
+    QProcess pubProcess;
+    pubProcess.start("/bin/bash", QStringList() << "-c" << command);
+    pubProcess.waitForFinished(5000);
+
+    log(QString("OTA状态上报: %1").arg(status));
 }

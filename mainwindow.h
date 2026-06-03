@@ -54,6 +54,7 @@ private:
     QString replacePasswordPlaceholders(const QString &cmd) const;
     void log(const QString &message);
     bool checkRobotStatus(int &stateId, QString &stateDesc);
+    void publishOtaStatus(int status);
 
     QFile logFile;
     QString latestVersion_; // 存储查询到的最新版本号
